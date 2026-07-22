@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { NorthAtlanticMap, type MapLayer } from "./components/NorthAtlanticMap";
 
 type FamilyAssessment = {
   family: string;
@@ -79,10 +80,27 @@ type AssessmentResponse = SnapshotPayload & {
   }>;
 };
 
-const layerCopy: Record<string, { title: string; body: string; label: string }> = {
+const layerCopy: Record<MapLayer, { title: string; body: string; label: string }> = {
   circulation: { title: "A planetary heat engine", body: "Warm, salty water travels north near the surface. As it cools and grows denser, it sinks and returns south through the deep Atlantic.", label: "Circulation estimate" },
   freshwater: { title: "Freshwater changes the balance", body: "Melt, precipitation, runoff, and Arctic export can reduce surface density—making deep-water formation more difficult.", label: "Freshwater anomaly" },
   evidence: { title: "Many signals, one system", body: "Floats, moorings, satellites, and ocean reanalyses each reveal part of the circulation. The model looks for persistent, coherent change.", label: "Observation coverage" },
+};
+
+const mapLayers: MapLayer[] = ["circulation", "freshwater", "evidence"];
+
+const mapLegend: Record<MapLayer, Array<{ tone: string; label: string }>> = {
+  circulation: [
+    { tone: "key-warm", label: "Warm upper limb" },
+    { tone: "key-cold", label: "Deep return · schematic" },
+  ],
+  freshwater: [
+    { tone: "key-fresh", label: "Freshwater pathway" },
+    { tone: "key-field", label: "Pressure field" },
+  ],
+  evidence: [
+    { tone: "key-array", label: "OSNAP transect" },
+    { tone: "key-argo", label: "Argo sampling domain" },
+  ],
 };
 
 const familyPresentation: Record<string, { name: string; role: string }> = {
@@ -121,7 +139,7 @@ function tierLabel(tier: string) {
 }
 
 export default function Home() {
-  const [layer, setLayer] = useState("circulation");
+  const [layer, setLayer] = useState<MapLayer>("circulation");
   const [selectedSnapshot, setSelectedSnapshot] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -225,29 +243,21 @@ export default function Home() {
           <a className="text-link" href="#observe">Explore the latest evidence <span>↓</span></a>
         </div>
 
-        <div className={`map map-${layer}`} role="img" aria-label={`Stylized map of the subpolar North Atlantic showing ${copy.label.toLowerCase()}`}>
-          <div className="map-grid" />
-          <div className="land canada"><span>CANADA</span></div>
-          <div className="land greenland"><span>GREENLAND</span></div>
-          <div className="land iceland"><span>ICELAND</span></div>
-          <div className="land europe"><span>EUROPE</span></div>
-          <div className="ocean-label labrador">LABRADOR<br />SEA</div>
-          <div className="ocean-label irminger">IRMINGER<br />SEA</div>
-          <div className="ocean-label nordic">NORDIC<br />SEAS</div>
-          <div className="current warm c1"/><div className="current warm c2"/><div className="current cold c3"/><div className="current cold c4"/>
-          <div className="observation o1"><i/><span>OSNAP WEST</span></div>
-          <div className="observation o2"><i/><span>OSNAP EAST</span></div>
-          <div className="freshwater f1"/><div className="freshwater f2"/><div className="freshwater f3"/>
+        <div className={`map map-${layer}`}>
+          <NorthAtlanticMap layer={layer} />
           <div className="map-caption">
-            <span className="caption-index">{String(Object.keys(layerCopy).indexOf(layer) + 1).padStart(2, "0")} / 03</span>
+            <span className="caption-index">{String(mapLayers.indexOf(layer) + 1).padStart(2, "0")} / 03 · {copy.label}</span>
             <h2>{copy.title}</h2>
             <p>{copy.body}</p>
           </div>
-          <div className="map-key"><span><i className="key-warm"/> Surface flow</span><span><i className="key-cold"/> Deep return</span></div>
+          <div className="map-key" aria-hidden="true">
+            {mapLegend[layer].map((item) => <span key={item.label}><i className={item.tone} /> {item.label}</span>)}
+          </div>
+          <p className="map-caveat">Geographic coastlines · Schematic flow paths · Not a velocity field</p>
         </div>
 
         <div className="layer-tabs" aria-label="Map layers">
-          {Object.keys(layerCopy).map((item, index) => <button key={item} onClick={() => setLayer(item)} className={layer === item ? "active" : ""} aria-pressed={layer === item}><b>0{index + 1}</b>{item}</button>)}
+          {mapLayers.map((item, index) => <button key={item} onClick={() => setLayer(item)} className={layer === item ? "active" : ""} aria-pressed={layer === item}><b>0{index + 1}</b>{item}</button>)}
         </div>
       </section>
 
