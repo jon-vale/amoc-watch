@@ -357,7 +357,6 @@ export default function Home() {
     : operational
       ? "OPERATIONAL SNAPSHOT"
       : data.dataState.storage === "supabase" ? "RESEARCH SNAPSHOT" : "LOCAL RESEARCH FIXTURE";
-  const latestPipelineRun = data?.pipelineStatus?.[0];
   const activeFamily = assessment?.families.find((family) => family.family === selectedFamily) ?? null;
   const activePresentation = selectedFamily ? familyPresentation[selectedFamily] : null;
   const activeMethod = selectedFamily ? familyMethod[selectedFamily] : null;
@@ -453,29 +452,10 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="learn" id="learn">
-        <div className="learn-intro">
-          <p className="eyebrow">The system, in three movements</p>
-          <h2>How the Atlantic overturns</h2>
-          <p>AMOC is not a single current or conveyor belt. It is a shifting, three-dimensional circulation shaped by winds, heat, freshwater, and the density of seawater.</p>
-        </div>
-        <div className="movement-grid">
-          <article><span>01</span><div className="movement-orbit warm-orbit"><i/></div><h3>Move heat north</h3><p>Warm, salty upper-ocean water carries heat toward the subpolar Atlantic.</p></article>
-          <article><span>02</span><div className="movement-orbit sink-orbit"><i/></div><h3>Transform water</h3><p>Cooling, mixing, and salt content change density. Dense water can sink into the ocean interior.</p></article>
-          <article><span>03</span><div className="movement-orbit cold-orbit"><i/></div><h3>Return at depth</h3><p>Cold, dense waters flow south, completing an overturning circulation spanning the Atlantic.</p></article>
-        </div>
-        <aside className="threat-note"><b>Where the threat enters</b><p>Ocean warming and additional freshwater can make surface waters lighter. But the response depends on where, when, and how those changes interact with wind and circulation.</p><span>Freshwater is one hypothesis among several—not an assumed answer.</span></aside>
-      </section>
-
       <section className="observe" id="observe">
         <div className="section-heading">
           <div><p className="eyebrow">Versioned evidence</p><h2>What the system is showing</h2></div>
           <p>Every displayed signal belongs to a specific environmental month, knowledge date, model version, and source revision.</p>
-        </div>
-
-        <div className="research-disclosure" role="status" aria-live="polite">
-          <div><b>{operational ? "Operational assessment" : "Research output—not an AMOC alarm"}</b><span>{operational ? "All publication gates passed." : "Transition probability is withheld until observational and model hindcasts pass calibration."}</span></div>
-          {latestPipelineRun && <small><i /> REAL-FEATURE PIPELINE · {formatMonth(latestPipelineRun.environmentalMonth)} · {latestPipelineRun.sourceCount} SOURCES · {latestPipelineRun.featureCount} FEATURES · QUARANTINED</small>}
         </div>
 
         <div className="timeline-card">
@@ -559,6 +539,20 @@ export default function Home() {
           </div>
           <p className="detail-caveat">Connected observations are bounded pipeline-validation samples and are excluded from the headline regime assessment until coverage, hindcasts, and calibration gates pass.</p>
         </section>}
+      </section>
+
+      <section className="learn" id="learn">
+        <div className="learn-intro">
+          <p className="eyebrow">The system, in three movements</p>
+          <h2>How the Atlantic overturns</h2>
+          <p>AMOC is not a single current or conveyor belt. It is a shifting, three-dimensional circulation shaped by winds, heat, freshwater, and the density of seawater.</p>
+        </div>
+        <div className="movement-grid">
+          <article><span>01</span><div className="movement-orbit warm-orbit"><i/></div><h3>Move heat north</h3><p>Warm, salty upper-ocean water carries heat toward the subpolar Atlantic.</p></article>
+          <article><span>02</span><div className="movement-orbit sink-orbit"><i/></div><h3>Transform water</h3><p>Cooling, mixing, and salt content change density. Dense water can sink into the ocean interior.</p></article>
+          <article><span>03</span><div className="movement-orbit cold-orbit"><i/></div><h3>Return at depth</h3><p>Cold, dense waters flow south, completing an overturning circulation spanning the Atlantic.</p></article>
+        </div>
+        <aside className="threat-note"><b>Where the threat enters</b><p>Ocean warming and additional freshwater can make surface waters lighter. But the response depends on where, when, and how those changes interact with wind and circulation.</p><span>Freshwater is one hypothesis among several—not an assumed answer.</span></aside>
       </section>
 
       <section className="sources" id="sources">
