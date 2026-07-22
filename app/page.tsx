@@ -33,13 +33,14 @@ export default function Home() {
   const [expanded, setExpanded] = useState(false);
   const [sourceFilter, setSourceFilter] = useState("All");
   const [assessment, setAssessment] = useState<{ regime: string; evidence: number; transitionRisk: number; confidence: number; modelVersion: string; datasetMode: string } | null>(null);
+  const [validation, setValidation] = useState<{ status: string; productionEligible: boolean; brier: number | null } | null>(null);
   const copy = layerCopy[layer];
   const date = useMemo(() => `${months[month]} 2026`, [month]);
 
   useEffect(() => {
     let active = true;
     fetch("/api/assessment").then((response) => response.json()).then((payload) => {
-      if (active) setAssessment(payload.assessment);
+      if (active) { setAssessment(payload.assessment); setValidation(payload.validation); }
     }).catch(() => undefined);
     return () => { active = false; };
   }, []);
@@ -154,6 +155,7 @@ export default function Home() {
           <div className="scale-labels"><span>Recent range</span><span>Unusual</span><span>Persistent</span><span>Possible shift</span></div>
           <div className="risk-result"><span>Current assessment</span><strong>{assessment?.regime ?? "Persistent anomaly"}</strong></div>
           <div className="model-numbers"><span><b>{Math.round((assessment?.evidence ?? .66) * 100)}%</b> evidence index</span><span><b>{Math.round((assessment?.transitionRisk ?? .28) * 100)}%</b> 5-year diagnostic</span><span><b>{Math.round((assessment?.confidence ?? .72) * 100)}%</b> model confidence</span></div>
+          <div className="validation-gate"><i className={validation?.productionEligible ? "eligible" : "blocked"}/><span><b>{validation?.status ?? "validation pending"}</b> · Public operational claims {validation?.productionEligible ? "enabled" : "blocked"}{validation?.brier != null ? ` · Brier ${validation.brier.toFixed(3)}` : ""}</span></div>
           <p className="risk-note">Several related signals remain outside their recent range. Evidence is not sufficient to infer a regime transition.</p>
           {expanded && <div className="method"><b>Evidence, not an alarm.</b> The prototype combines density structure, convection, freshwater pressure, spatial fingerprints, and transport estimates. Direct observations validate the model as new releases become available. Current feed: <code>{assessment?.datasetMode ?? "illustrative-fixture"}</code>.</div>}
         </div>

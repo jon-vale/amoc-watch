@@ -6,11 +6,40 @@ import { normalizeObservation } from "../science/adapters/contracts.mjs";
 import { buildOisstSubsetUrl, monthlyRegionalMean, parseErddapGridCsv } from "../science/adapters/oisst.mjs";
 import { latestArgoManifest } from "../science/adapters/argo.mjs";
 import { buildEra5Request } from "../science/adapters/era5.mjs";
+import { brierScore, blockedSplits, evaluateCalibration, fitLogisticCalibration, leaveOneFamilyOut } from "../science/calibration.mjs";
+import { syntheticHindcastExamples } from "../science/calibration-fixtures.mjs";
 
 test("standardization uses the historical baseline", () => {
   const series = Array.from({ length: 24 }, (_, i) => ({ date: `2019-${String((i % 12) + 1).padStart(2, "0")}`, value: i }));
   const result = standardizeSeries(series, "2020-12");
   assert.ok(Math.abs(result.reduce((sum, point) => sum + point.z, 0)) < 1e-10);
+});
+
+test("blocked calibration never trains on future examples", () => {
+  const splits = blockedSplits(syntheticHindcastExamples());
+  for (const split of splits) assert.ok(split.train.at(-1).date < split.validation[0].date);
+});
+
+test("logistic calibration produces bounded, useful hindcast diagnostics", () => {
+  const examples = syntheticHindcastExamples();
+  const coefficients = fitLogisticCalibration(examples.slice(0, 120));
+  assert.ok(coefficients.slope > 0);
+  const report = evaluateCalibration(examples);
+  assert.equal(report.productionEligible, false);
+  assert.ok(report.brier >= 0 && report.brier <= 1);
+  assert.ok(report.outOfSamplePredictions > 0);
+});
+
+test("Brier score rewards accurate probability forecasts", () => {
+  assert.ok(brierScore([{ probability: .9, label: 1 }, { probability: .1, label: 0 }]) < brierScore([{ probability: .1, label: 1 }, { probability: .9, label: 0 }]));
+});
+
+test("leave-one-family-out reports influence without mutating inputs", () => {
+  const inputs = { overturning: .8, density: .6, freshwater: .5 };
+  const combine = (values) => Object.values(values).reduce((sum, value) => sum + value, 0) / Object.keys(values).length;
+  const result = leaveOneFamilyOut(inputs, combine);
+  assert.equal(result.length, 3);
+  assert.equal(Object.keys(inputs).length, 3);
 });
 
 test("OISST adapter builds a bounded query and aggregates monthly rows", () => {

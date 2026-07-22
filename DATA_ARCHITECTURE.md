@@ -31,6 +31,12 @@ The first model emits `regime`, `evidence`, `transitionRisk`, `confidence`, and 
 
 The current coefficients are placeholders for engineering validation. Before scientific release they must be calibrated through blocked hindcasts, sensitivity analysis across baselines, reanalysis leave-one-out tests, and evaluation against CMIP control and forced experiments.
 
+## Calibration gate
+
+The implementation now supports time-blocked logistic calibration, Brier scoring, reliability bins, and leave-one-family-out influence tests. Training folds always precede validation folds to prevent future leakage. The API publishes validation status separately from the current assessment.
+
+Synthetic labels exercise the machinery but can never make a model production-eligible. Operational transition-risk claims remain blocked until documented CMIP experiments and observational hindcasts replace the fixtures, OSNAP/RAPID validation is complete, and TEOS-10 profile processing is enabled.
+
 ## Operational safeguards
 
 - Never count two reanalyses as independent observations when they assimilate overlapping inputs.
