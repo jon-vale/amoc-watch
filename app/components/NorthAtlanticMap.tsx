@@ -5,7 +5,7 @@ import {
   type GeoPermissibleObjects,
 } from "d3-geo";
 import { feature, mesh } from "topojson-client";
-import type { MultiLineString, MultiPoint } from "geojson";
+import type { MultiPoint } from "geojson";
 import type {
   GeometryCollection,
   Topology,
@@ -110,77 +110,65 @@ function smoothLinePath(coordinates: Coordinate[]) {
   return `${value} Q${controlX.toFixed(2)},${controlY.toFixed(2)} ${endX.toFixed(2)},${endY.toFixed(2)}`;
 }
 
-function multiLinePath(coordinates: Coordinate[][]) {
-  const geometry: MultiLineString = { type: "MultiLineString", coordinates };
-  return path(geometry) ?? "";
-}
-
 function locate(coordinate: Coordinate) {
   return projection(coordinate) ?? [0, 0];
 }
 
-const warmUpperLimb = smoothLinePath([
+// Simplified from the long-term mean pathways in McCarthy et al. (2020)
+// and the boundary-current ordering observed across the OSNAP array.
+const northAtlanticCurrent = smoothLinePath([
   [-58, 40.5],
-  [-51, 43.5],
-  [-44, 47.5],
-  [-36, 51.5],
-  [-27, 54],
-  [-17, 56],
-  [-8, 61],
-]);
-
-const subpolarWarmLoop = smoothLinePath([
-  [-32, 52],
-  [-24, 58],
-  [-17, 63],
-  [-25, 66],
-  [-35, 64],
-  [-43, 60],
-]);
-
-const easternWarmBranch = smoothLinePath([
-  [-24, 55],
-  [-15, 58],
+  [-50, 44],
+  [-42, 47],
+  [-34, 50],
+  [-27, 53],
+  [-20, 56],
+  [-13, 59],
   [-7, 62],
-  [4, 66],
 ]);
 
-const deepReturn = smoothLinePath([
-  [-8, 72],
-  [-18, 67],
-  [-27, 63],
-  [-34, 63],
-  [-42, 59.5],
-  [-49, 56],
-  [-54, 51],
-  [-53, 45],
-  [-48, 40.5],
+const irmingerCurrent = smoothLinePath([
+  [-38, 51],
+  [-35, 54],
+  [-32, 57],
+  [-29, 60],
+  [-25, 63],
 ]);
 
-const easternDeepBranch = smoothLinePath([
-  [8, 74],
-  [1, 69],
-  [-8, 65],
-  [-15, 59],
-  [-20, 52],
-  [-18, 46],
-]);
-
-const eastGreenlandCoastal = smoothLinePath([
-  [-8, 79],
+const eastGreenlandCurrent = smoothLinePath([
+  [-8, 78],
   [-14, 75],
   [-20, 71],
-  [-27, 66],
-  [-35, 62],
-  [-43, 60],
+  [-27, 67],
+  [-34, 63],
+  [-42, 60],
 ]);
 
-const labradorCoastal = smoothLinePath([
+const westGreenlandCurrent = smoothLinePath([
+  [-42, 59],
+  [-46, 61],
+  [-49, 63],
+  [-52, 65],
+]);
+
+const labradorCurrent = smoothLinePath([
   [-58, 64],
-  [-59, 59],
-  [-58, 54],
-  [-55, 49],
-  [-51, 45],
+  [-59, 60],
+  [-58, 56],
+  [-56, 52],
+  [-53, 48],
+  [-51, 44],
+]);
+
+const deepLowerLimb = smoothLinePath([
+  [-20, 66],
+  [-27, 63],
+  [-35, 60],
+  [-43, 58],
+  [-49, 55],
+  [-54, 51],
+  [-56, 46],
+  [-55, 41],
 ]);
 
 const eastGreenlandFreshwater = smoothLinePath([
@@ -202,39 +190,29 @@ const baffinFreshwater = smoothLinePath([
 ]);
 
 const osnapWest = linePath([
-  [-56.5, 52.5],
-  [-53, 54.2],
-  [-50, 56.1],
-  [-47, 58.2],
-  [-44.5, 59.7],
+  [-56, 52.8],
+  [-53, 54],
+  [-50, 55.5],
+  [-47, 57.3],
+  [-44, 59.2],
 ]);
 
-const osnapEast = multiLinePath([
-  [
-    [-42, 60],
-    [-35, 59.2],
-    [-28, 58.9],
-    [-22.3, 59.2],
-  ],
-  [
-    [-18.5, 59.1],
-    [-13, 58.4],
-    [-8, 57.8],
-    [-5, 57.5],
-  ],
+const osnapEast = linePath([
+  [-43, 60],
+  [-38, 59.4],
+  [-33, 58.8],
+  [-28, 58.5],
+  [-23, 58.3],
+  [-18, 58.2],
+  [-13, 58],
+  [-8, 57.7],
+  [-5, 57.5],
 ]);
-
-const freshwaterNodes: Coordinate[] = [
-  [-18, 75],
-  [-25, 69],
-  [-36, 63],
-  [-62, 68],
-  [-57, 59],
-];
 
 const transformationZones: Array<{ name: string; coordinate: Coordinate }> = [
   { name: "LABRADOR", coordinate: [-53, 57] },
   { name: "IRMINGER", coordinate: [-34, 61.5] },
+  { name: "NORDIC", coordinate: [-5, 69] },
 ];
 
 const labels: Array<{ name: string; coordinate: Coordinate; kind?: string }> = [
@@ -249,11 +227,11 @@ const labels: Array<{ name: string; coordinate: Coordinate; kind?: string }> = [
 
 const layerDescription: Record<MapLayer, string> = {
   circulation:
-    "A geographic map of the subpolar North Atlantic with schematic warm surface currents, cold deep currents, coastal currents, and water-mass transformation zones.",
+    "A simplified geographic schematic of the North Atlantic Current, the Irminger and cold boundary currents, water-mass transformation regions, and a conceptual deep southward lower limb.",
   freshwater:
     "A geographic map showing two conceptual freshwater pathways from the Arctic along East Greenland and through Baffin Bay into the Labrador Sea.",
   evidence:
-    "A geographic map showing the OSNAP West and East reference transects, an observed OISST point, and the aggregate footprint of a bounded Argo validation sample.",
+    "A geographic map showing the OSNAP West and East reference transects, an observed OISST point, and the bounding extent of a small Argo validation sample.",
 };
 
 export function NorthAtlanticMap({ layer, observations }: NorthAtlanticMapProps) {
@@ -300,25 +278,17 @@ export function NorthAtlanticMap({ layer, observations }: NorthAtlanticMapProps)
             <stop offset="0" stopColor="#246f91" />
             <stop offset="1" stopColor="#174c70" />
           </linearGradient>
-          <radialGradient id="freshwater-field">
-            <stop offset="0" stopColor="#78cbd7" stopOpacity="0.44" />
-            <stop offset="1" stopColor="#78cbd7" stopOpacity="0" />
-          </radialGradient>
-          <filter id="soft-glow" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur stdDeviation="3" result="glow" />
-            <feMerge><feMergeNode in="glow" /><feMergeNode in="SourceGraphic" /></feMerge>
-          </filter>
           <marker id="warm-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-            <path d="M 0 0 L 10 5 L 0 10 z" fill="#f0a762" />
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#ff7c69" />
           </marker>
           <marker id="cold-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-            <path d="M 0 0 L 10 5 L 0 10 z" fill="#79b9d1" />
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#8fd8ef" />
+          </marker>
+          <marker id="deep-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#d9f3ff" />
           </marker>
           <marker id="fresh-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
             <path d="M 0 0 L 10 5 L 0 10 z" fill="#78cbd7" />
-          </marker>
-          <marker id="coastal-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-            <path d="M 0 0 L 10 5 L 0 10 z" fill="#b9c54a" />
           </marker>
           <clipPath id="map-viewport"><rect x="12" y="22" width="776" height="506" rx="18" /></clipPath>
         </defs>
@@ -330,35 +300,32 @@ export function NorthAtlanticMap({ layer, observations }: NorthAtlanticMapProps)
           <path className="geo-borders" d={path(borders) ?? ""} />
 
           <g className="map-layer circulation-layer" aria-hidden={layer !== "circulation"}>
-            <path className="flow flow-warm" d={warmUpperLimb} markerEnd="url(#warm-arrow)" />
-            <path className="flow flow-warm branch" d={subpolarWarmLoop} markerEnd="url(#warm-arrow)" />
-            <path className="flow flow-warm branch" d={easternWarmBranch} markerEnd="url(#warm-arrow)" />
-            <path className="flow flow-cold" d={deepReturn} markerEnd="url(#cold-arrow)" />
-            <path className="flow flow-cold branch" d={easternDeepBranch} markerEnd="url(#cold-arrow)" />
-            <path className="flow flow-coastal" d={eastGreenlandCoastal} markerEnd="url(#coastal-arrow)" />
-            <path className="flow flow-coastal" d={labradorCoastal} markerEnd="url(#coastal-arrow)" />
+            <path className="flow flow-warm" d={northAtlanticCurrent} markerEnd="url(#warm-arrow)" />
+            <path className="flow flow-warm branch" d={irmingerCurrent} markerEnd="url(#warm-arrow)" />
+            <path className="flow flow-boundary" d={eastGreenlandCurrent} markerEnd="url(#cold-arrow)" />
+            <path className="flow flow-boundary" d={westGreenlandCurrent} markerEnd="url(#cold-arrow)" />
+            <path className="flow flow-boundary" d={labradorCurrent} markerEnd="url(#cold-arrow)" />
+            <path className="flow flow-deep" d={deepLowerLimb} markerEnd="url(#deep-arrow)" />
             {transformationZones.map(({ name, coordinate }) => {
               const [x, y] = locate(coordinate);
               return <g className="transformation-zone" key={name}>
-                <circle cx={x} cy={y} r="13" />
-                <circle className="transformation-core" cx={x} cy={y} r="5" />
+                <circle cx={x} cy={y} r="10" />
+                <circle className="transformation-core" cx={x} cy={y} r="3.5" />
               </g>;
             })}
             {(() => {
-              const [warmX, warmY] = locate([-27, 54]);
-              const [coldX, coldY] = locate([-50, 48]);
+              const [warmX, warmY] = locate([-25, 53]);
+              const [boundaryX, boundaryY] = locate([-57, 54]);
+              const [deepX, deepY] = locate([-52, 48]);
               return <>
-                <text className="flow-label warm-label" x={warmX + 10} y={warmY - 13}>WARM SURFACE FLOW</text>
-                <text className="flow-label cold-label" x={coldX + 12} y={coldY + 9}>COLD DEEP RETURN</text>
+                <text className="flow-label warm-label" x={warmX + 9} y={warmY - 12}>NORTH ATLANTIC CURRENT</text>
+                <text className="flow-label boundary-label" x={boundaryX - 12} y={boundaryY - 10}>LABRADOR CURRENT</text>
+                <text className="flow-label deep-label" x={deepX + 13} y={deepY + 12}>DEEP LOWER LIMB · SCHEMATIC</text>
               </>;
             })()}
           </g>
 
           <g className="map-layer freshwater-layer" aria-hidden={layer !== "freshwater"}>
-            {freshwaterNodes.map((coordinate) => {
-              const [x, y] = locate(coordinate);
-              return <circle key={coordinate.join(",")} className="freshwater-field" cx={x} cy={y} r="50" fill="url(#freshwater-field)" />;
-            })}
             <path className="freshwater-route" d={eastGreenlandFreshwater} markerEnd="url(#fresh-arrow)" />
             <path className="freshwater-route" d={baffinFreshwater} markerEnd="url(#fresh-arrow)" />
             {(() => {
@@ -383,7 +350,7 @@ export function NorthAtlanticMap({ layer, observations }: NorthAtlanticMapProps)
               </text>
             </g>}
             {argo && argoLabel && <text className="argo-label" x={argoLabel[0]} y={argoLabel[1] - 9} textAnchor="middle">
-              ARGO FOOTPRINT · {argo.month.toUpperCase()} · {argo.profileCount} PROFILES{argo.aligned ? "" : " · NEAREST"}
+              ARGO SAMPLE EXTENT · {argo.month.toUpperCase()} · {argo.profileCount} PROFILES{argo.aligned ? "" : " · NEAREST"}
             </text>}
             {(() => {
               const [westX, westY] = locate([-50, 56]);

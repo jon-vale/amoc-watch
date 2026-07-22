@@ -132,27 +132,26 @@ type AssessmentResponse = SnapshotPayload & {
 };
 
 const layerCopy: Record<MapLayer, { title: string; body: string; label: string }> = {
-  circulation: { title: "A planetary heat engine", body: "Warm, salty water travels north near the surface. As it cools and grows denser, it sinks and returns south through the deep Atlantic.", label: "Circulation estimate" },
-  freshwater: { title: "Freshwater changes the balance", body: "Melt, precipitation, runoff, and Arctic export can reduce surface density—making deep-water formation more difficult.", label: "Freshwater anomaly" },
-  evidence: { title: "Many signals, one system", body: "Floats, moorings, satellites, and ocean reanalyses each reveal part of the circulation. The model looks for persistent, coherent change.", label: "Observation coverage" },
+  circulation: { title: "A circulation, not a conveyor belt", body: "The North Atlantic Current carries warm water northeast. Boundary currents and transformed deep waters complete a variable, three-dimensional system.", label: "Simplified circulation" },
+  freshwater: { title: "Freshwater changes the balance", body: "Two important export routes follow East Greenland and Baffin Bay toward the subpolar seas. They are pathways—not measured anomaly fields.", label: "Conceptual pathways" },
+  evidence: { title: "Where this prototype observes", body: "OSNAP is shown as two real transects. The OISST point and Argo rectangle are small validation samples, not basin-wide coverage.", label: "Connected observations" },
 };
 
 const mapLayers: MapLayer[] = ["circulation", "freshwater", "evidence"];
 
 const mapLegend: Record<MapLayer, Array<{ tone: string; label: string }>> = {
   circulation: [
-    { tone: "key-warm", label: "Warm surface currents" },
-    { tone: "key-cold", label: "Cold deep currents" },
-    { tone: "key-coastal", label: "Coastal currents" },
-    { tone: "key-sinking", label: "Water-mass transformation" },
+    { tone: "key-warm", label: "Warm upper-ocean branches" },
+    { tone: "key-cold", label: "Cold boundary currents" },
+    { tone: "key-deep", label: "Conceptual deep lower limb" },
+    { tone: "key-sinking", label: "Transformation regions" },
   ],
   freshwater: [
-    { tone: "key-fresh", label: "Freshwater pathway" },
-    { tone: "key-field", label: "Pressure field" },
+    { tone: "key-fresh", label: "Conceptual freshwater routes" },
   ],
   evidence: [
-    { tone: "key-array", label: "OSNAP transect" },
-    { tone: "key-argo", label: "Argo sample footprint" },
+    { tone: "key-array", label: "OSNAP West + East" },
+    { tone: "key-argo", label: "Argo sample extent" },
     { tone: "key-oisst", label: "OISST observed point" },
   ],
 };
