@@ -3,11 +3,35 @@ import test from "node:test";
 import { assessRegime, classifyRegime, standardizeSeries } from "../science/model.mjs";
 import { prototypeInput } from "../science/fixtures.mjs";
 import { normalizeObservation } from "../science/adapters/contracts.mjs";
+import { buildOisstSubsetUrl, monthlyRegionalMean, parseErddapGridCsv } from "../science/adapters/oisst.mjs";
+import { latestArgoManifest } from "../science/adapters/argo.mjs";
+import { buildEra5Request } from "../science/adapters/era5.mjs";
 
 test("standardization uses the historical baseline", () => {
   const series = Array.from({ length: 24 }, (_, i) => ({ date: `2019-${String((i % 12) + 1).padStart(2, "0")}`, value: i }));
   const result = standardizeSeries(series, "2020-12");
   assert.ok(Math.abs(result.reduce((sum, point) => sum + point.z, 0)) < 1e-10);
+});
+
+test("OISST adapter builds a bounded query and aggregates monthly rows", () => {
+  const url = buildOisstSubsetUrl({ start: "2026-06-01T12:00:00Z", end: "2026-06-02T12:00:00Z" });
+  assert.match(url, /ncdc_oisst_v2_avhrr_by_time_zlev_lat_lon\.csv/);
+  assert.match(decodeURIComponent(url), /\[\(300\.125\):4:\(350\.125\)\]/);
+  const rows = parseErddapGridCsv("time,zlev,latitude,longitude,sst\nUTC,m,degrees_north,degrees_east,degree_C\n2026-06-01T12:00:00Z,0,50,-40,10\n2026-06-02T12:00:00Z,0,50,-40,12");
+  assert.equal(monthlyRegionalMean(rows)[0].value, 11);
+});
+
+test("Argo adapter filters the GDAC profile index in space and time", () => {
+  const index = "# comment\naoml/1901/profiles/R1901_001.nc,20260601120000,55,-35,A,846,AO,20260602120000\naoml/1902/profiles/R1902_001.nc,20260601120000,20,-35,A,846,AO,20260602120000";
+  const manifest = latestArgoManifest(index, { since: "2026-06-01" });
+  assert.equal(manifest.length, 1);
+  assert.match(manifest[0].url, /R1901_001\.nc$/);
+});
+
+test("ERA5 request is credential-explicit and region-bounded", () => {
+  const request = buildEra5Request(2026, 6);
+  assert.deepEqual(request.area, [70, -70, 40, 10]);
+  assert.ok(request.variable.includes("total_precipitation"));
 });
 
 test("prototype assessment is bounded and fully attributed", () => {
