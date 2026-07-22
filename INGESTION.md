@@ -30,3 +30,25 @@ The first bounded real-data run was completed on 22 July 2026. Nine accepted pro
 A separate NOAA OISST validation snapshot contains seven monthly means for January–July 2026 at 55°N, 35°W. It proves the fetch, parsing, provenance, and publication path but is neither an area-weighted regional index nor a historical anomaly record.
 
 Both sanitized snapshots are returned by the assessment API as `observationalBeta`. They are visible in the interface and deliberately excluded from the headline regime assessment.
+
+## Scheduled monthly workflow
+
+`.github/workflows/monthly-ingestion.yml` runs on the eighth day of each month
+and may also be started manually for a declared `YYYY-MM` environmental month.
+It uses the complete Argo GDAC profile index to select a bounded, one-profile-
+per-float subpolar sample, reduces those NetCDF profiles with TEOS-10, queries a
+bounded OISST rectangle, builds deterministic feature records, and publishes
+them separately from the web deployment.
+
+The workflow requires repository secrets named `SUPABASE_URL` and
+`SUPABASE_SERVICE_ROLE_KEY`. It is inert until this workspace is connected to a
+GitHub repository and those secrets are configured. Compact run evidence is
+retained as a workflow artifact for 30 days; the database retains checksums,
+source revisions, normalized observations, features, and lineage permanently.
+
+## Assessment quarantine
+
+New observations and raw monthly features never enter the public classification
+automatically. Each run is written with `assessment_eligible: false`. Features
+need an adequate seasonal baseline, coverage review, method version, and an
+explicit assessment publication step before they may influence model output.

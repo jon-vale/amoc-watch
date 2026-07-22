@@ -36,6 +36,8 @@ class ProfileReductionTests(unittest.TestCase):
         self.assertEqual(summary["profile_count"], 2)
         self.assertIsNotNone(summary["surface_density"]["uncertainty"])
         self.assertEqual(summary["coverage"]["deep_profile_fraction"], 1)
+        self.assertGreaterEqual(summary["coverage"]["sampling_fraction"], 0)
+        self.assertLessEqual(summary["coverage"]["sampling_fraction"], 1)
         self.assertEqual(summary["provisional_fraction"], 0.5)
 
 

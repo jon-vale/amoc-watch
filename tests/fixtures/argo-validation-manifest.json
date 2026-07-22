@@ -1,0 +1,16 @@
+{
+  "index": "https://data-argo.ifremer.fr/ar_index_global_prof.txt",
+  "bounds": [45, -60, 65, -10],
+  "since": "2026-07-01",
+  "until": "2026-07-31",
+  "retrieved_at": "2026-07-22T00:00:00Z",
+  "profiles": [
+    {
+      "file": "validation/bounded-real-observation-sample.nc",
+      "date": "20260701000000",
+      "latitude": 55,
+      "longitude": -35,
+      "bytes": 0
+    }
+  ]
+}

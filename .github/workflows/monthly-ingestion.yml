@@ -1,0 +1,51 @@
+name: Monthly AMOC ingestion
+
+on:
+  schedule:
+    - cron: "17 12 8 * *"
+  workflow_dispatch:
+    inputs:
+      target_month:
+        description: "Environmental month to process (YYYY-MM); defaults to the previous month"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: amoc-monthly-ingestion
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      AMOC_TARGET_MONTH: ${{ inputs.target_month }}
+      ARGO_PROFILE_LIMIT: "300"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+      - run: npm ci
+      - run: python -m pip install -r requirements-science.txt
+      - run: npm run test:science
+      - run: PYTHONPATH=pipeline python -m unittest discover -s pipeline/tests -p 'test_*.py'
+      - run: npm run ingest:monthly
+      - name: Retain compact run evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: amoc-ingestion-${{ github.run_id }}
+          path: data-work/monthly/
+          if-no-files-found: warn
+          retention-days: 30

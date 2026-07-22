@@ -6,13 +6,20 @@
     "node": ">=22.13.0"
   },
   "scripts": {
-    "dev": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext dev",
-    "build": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext build",
-    "start": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext start",
-    "test": "npm run build && node --test tests/rendered-html.test.mjs",
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start",
+    "dev:sites": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext dev",
+    "build:sites": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext build",
+    "start:sites": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext start",
+    "test": "npm run test:science && npm run build",
+    "test:sites": "npm run build:sites && node --test tests/rendered-html.test.mjs",
     "test:science": "node --test tests/science-model.test.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
-    "db:generate": "drizzle-kit generate"
+    "db:generate": "drizzle-kit generate",
+    "supabase:publish": "node pipeline/publish_to_supabase.mjs",
+    "ingest:monthly": "node pipeline/run_monthly_ingestion.mjs",
+    "ingest:bundle": "node pipeline/publish_feature_bundle.mjs"
   },
   "dependencies": {
     "drizzle-orm": "0.45.2",

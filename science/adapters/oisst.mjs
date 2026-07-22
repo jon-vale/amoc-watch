@@ -35,6 +35,7 @@ export function monthlyRegionalMean(rows, retrievedAt = new Date().toISOString()
   return [...months.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([date, values]) => normalizeObservation({
     source: "oisst", variable: "subpolar_sst", family: "thermalPattern", date,
     value: values.reduce((sum, value) => sum + value, 0) / values.length,
+    sampleCount: values.length,
     units: "degree_C", quality: "final", revision: "v2.1", provisional: false, retrievedAt,
   }));
 }

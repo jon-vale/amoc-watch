@@ -1,8 +1,12 @@
-# vinext-starter
+# AMOC Watch
 
-A clean full-stack starter running on
-[vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and
-Drizzle support.
+A map-first North Atlantic observatory for explaining AMOC, presenting multiple
+physical indicators, and publishing versioned regime-model assessments.
+
+The deployed product is a research alpha. Model v0.2 withholds transition
+probabilities until observational and CMIP hindcasts pass the calibration gate;
+published snapshots may contain illustrative model-development inputs and are
+labelled accordingly in the interface.
 
 ## Prerequisites
 
@@ -15,6 +19,36 @@ npm install
 npm run dev
 npm run build
 ```
+
+The default scripts run standard Next.js for Vercel. The original Sites/vinext
+path remains available as `npm run dev:sites` and `npm run build:sites`.
+
+## Supabase snapshot store
+
+The public API reads the ordered history of published rows from
+`public.amoc_assessment_snapshots`. The interface only exposes months and model
+versions that exist in that history. When Supabase is unconfigured, unreachable,
+or empty, it deliberately falls back to one versioned local research fixture and
+labels that state in the interface.
+
+1. Apply `supabase/migrations/202607220001_initial.sql` to the AMOC Watch project.
+2. Configure `SUPABASE_URL` and `SUPABASE_ANON_KEY` in the server environment.
+3. Keep `SUPABASE_SERVICE_ROLE_KEY` pipeline-only and run
+   `npm run supabase:publish` to insert an immutable assessment snapshot.
+
+Publishing is deliberately separate from `npm run build`: deploying interface
+code must not create a scientific record as a side effect. Run the publisher
+from an operator-controlled or scheduled data workflow after its inputs pass
+the validation gate.
+
+Apply the migrations in filename order. The lineage migrations add pipeline
+runs, source revisions, normalized observations, raw monthly features, and
+feature-to-assessment provenance. `npm run ingest:monthly` executes the bounded
+Argo/OISST workflow for the previous complete month, or for `AMOC_TARGET_MONTH`
+when supplied by the scheduler.
+
+The anonymous key is only granted `select` access to published rows. Browser
+code never receives either key; the Next.js API route is the public boundary.
 
 This starter does not use `wrangler.jsonc`.
 

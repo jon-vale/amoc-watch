@@ -160,6 +160,14 @@ def aggregate_month(metrics: Sequence[ProfileMetrics]) -> dict:
     months = {item.month for item in metrics}
     if len(months) != 1:
         raise ValueError("all profiles must belong to the same month")
+    latitude_min = min(item.latitude for item in metrics)
+    latitude_max = max(item.latitude for item in metrics)
+    longitude_min = min(item.longitude for item in metrics)
+    longitude_max = max(item.longitude for item in metrics)
+    latitude_fraction = min(1.0, max(0.0, latitude_max - latitude_min) / 20.0)
+    longitude_fraction = min(1.0, max(0.0, longitude_max - longitude_min) / 50.0)
+    count_fraction = min(1.0, len(metrics) / 60.0)
+    sampling_fraction = sqrt(latitude_fraction * longitude_fraction) * count_fraction
     return {
         "month": next(iter(months)), "profile_count": len(metrics),
         "provisional_fraction": sum(item.provisional for item in metrics) / len(metrics),
@@ -170,7 +178,9 @@ def aggregate_month(metrics: Sequence[ProfileMetrics]) -> dict:
         "mixed_layer_depth": _summary(item.mixed_layer_depth for item in metrics),
         "coverage": {
             "deep_profile_fraction": sum(item.maximum_pressure >= 1000 for item in metrics) / len(metrics),
-            "latitude_min": min(item.latitude for item in metrics), "latitude_max": max(item.latitude for item in metrics),
-            "longitude_min": min(item.longitude for item in metrics), "longitude_max": max(item.longitude for item in metrics),
+            "sampling_fraction": sampling_fraction,
+            "coverage_method": "profile-count and geographic-span engineering gate v1",
+            "latitude_min": latitude_min, "latitude_max": latitude_max,
+            "longitude_min": longitude_min, "longitude_max": longitude_max,
         },
     }
