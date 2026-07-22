@@ -21,6 +21,30 @@ type AtlasObjects = {
 
 type NorthAtlanticMapProps = {
   layer: MapLayer;
+  observations?: MapObservations;
+};
+
+export type MapObservations = {
+  targetMonth: string;
+  argo?: {
+    month: string;
+    profileCount: number;
+    aligned: boolean;
+    bounds: {
+      latitudeMin: number;
+      latitudeMax: number;
+      longitudeMin: number;
+      longitudeMax: number;
+    };
+  };
+  oisst?: {
+    month: string;
+    value: number;
+    units: string;
+    aligned: boolean;
+    latitude: number;
+    longitude: number;
+  };
 };
 
 type Coordinate = [number, number];
@@ -213,14 +237,6 @@ const transformationZones: Array<{ name: string; coordinate: Coordinate }> = [
   { name: "IRMINGER", coordinate: [-34, 61.5] },
 ];
 
-// These dots describe the Argo sampling domain, not the live positions of floats.
-const argoDomain: Coordinate[] = [
-  [-57, 54], [-52, 58], [-48, 53], [-45, 63], [-42, 56], [-39, 60],
-  [-37, 52], [-35, 65], [-33, 58], [-31, 48], [-29, 62], [-27, 55],
-  [-25, 68], [-23, 51], [-21, 60], [-19, 55], [-17, 63], [-15, 48],
-  [-13, 57], [-11, 66], [-9, 53], [-7, 61], [-5, 70], [-3, 56],
-];
-
 const labels: Array<{ name: string; coordinate: Coordinate; kind?: string }> = [
   { name: "CANADA", coordinate: [-64, 56], kind: "land-label" },
   { name: "GREENLAND", coordinate: [-41, 72], kind: "land-label" },
@@ -237,10 +253,32 @@ const layerDescription: Record<MapLayer, string> = {
   freshwater:
     "A geographic map showing two conceptual freshwater pathways from the Arctic along East Greenland and through Baffin Bay into the Labrador Sea.",
   evidence:
-    "A geographic map showing the OSNAP West and East observation transects and the broader Argo profile sampling domain.",
+    "A geographic map showing the OSNAP West and East reference transects, an observed OISST point, and the aggregate footprint of a bounded Argo validation sample.",
 };
 
-export function NorthAtlanticMap({ layer }: NorthAtlanticMapProps) {
+export function NorthAtlanticMap({ layer, observations }: NorthAtlanticMapProps) {
+  const argo = observations?.argo;
+  const argoFootprint = argo
+    ? path({
+      type: "Polygon",
+      coordinates: [[
+        [argo.bounds.longitudeMin, argo.bounds.latitudeMin],
+        [argo.bounds.longitudeMax, argo.bounds.latitudeMin],
+        [argo.bounds.longitudeMax, argo.bounds.latitudeMax],
+        [argo.bounds.longitudeMin, argo.bounds.latitudeMax],
+        [argo.bounds.longitudeMin, argo.bounds.latitudeMin],
+      ]],
+    } as GeoPermissibleObjects) ?? ""
+    : "";
+  const argoLabel = argo
+    ? locate([
+      (argo.bounds.longitudeMin + argo.bounds.longitudeMax) / 2,
+      argo.bounds.latitudeMax,
+    ])
+    : null;
+  const oisst = observations?.oisst;
+  const oisstPoint = oisst ? locate([oisst.longitude, oisst.latitude]) : null;
+
   return (
     <div className="geo-map-shell">
       <div className="geo-map-meta" aria-hidden="true">
@@ -334,20 +372,25 @@ export function NorthAtlanticMap({ layer }: NorthAtlanticMapProps) {
           </g>
 
           <g className="map-layer evidence-layer" aria-hidden={layer !== "evidence"}>
-            {argoDomain.map((coordinate) => {
-              const [x, y] = locate(coordinate);
-              return <circle key={coordinate.join(",")} className="argo-dot" cx={x} cy={y} r="3.2" />;
-            })}
+            {argo && <path className="argo-footprint" d={argoFootprint} />}
             <path className="array-transect" d={osnapWest} />
             <path className="array-transect" d={osnapEast} />
+            {oisst && oisstPoint && <g className="oisst-observation">
+              <circle className="oisst-halo" cx={oisstPoint[0]} cy={oisstPoint[1]} r="14" />
+              <circle className="oisst-point" cx={oisstPoint[0]} cy={oisstPoint[1]} r="5" />
+              <text className="oisst-label" x={oisstPoint[0] + 11} y={oisstPoint[1] - 10}>
+                OISST · {oisst.month.toUpperCase()} · {oisst.value.toFixed(2)}°C{oisst.aligned ? "" : " · NEAREST"}
+              </text>
+            </g>}
+            {argo && argoLabel && <text className="argo-label" x={argoLabel[0]} y={argoLabel[1] - 9} textAnchor="middle">
+              ARGO FOOTPRINT · {argo.month.toUpperCase()} · {argo.profileCount} PROFILES{argo.aligned ? "" : " · NEAREST"}
+            </text>}
             {(() => {
               const [westX, westY] = locate([-50, 56]);
               const [eastX, eastY] = locate([-28, 59]);
-              const [argoX, argoY] = locate([-19, 51]);
               return <>
                 <text className="array-label" x={westX - 52} y={westY + 35}>OSNAP WEST</text>
                 <text className="array-label" x={eastX + 5} y={eastY - 13}>OSNAP EAST</text>
-                <text className="argo-label" x={argoX + 10} y={argoY + 4}>ARGO PROFILE DOMAIN</text>
               </>;
             })()}
           </g>

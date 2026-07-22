@@ -1,7 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { NorthAtlanticMap, type MapLayer } from "./components/NorthAtlanticMap";
+import {
+  NorthAtlanticMap,
+  type MapLayer,
+  type MapObservations,
+} from "./components/NorthAtlanticMap";
 
 type FamilyAssessment = {
   family: string;
@@ -44,9 +48,56 @@ type SourceEntry = {
   url?: string;
 };
 
+type ObservedMetric = {
+  mean: number | null;
+  uncertainty: number | null;
+  count: number;
+};
+
+type ArgoMonth = {
+  month: string;
+  profile_count: number;
+  provisional_fraction: number;
+  thermodynamic_methods: string[];
+  surface_density: ObservedMetric;
+  stratification_0_200m: ObservedMetric;
+  freshwater_0_1000m: ObservedMetric;
+  mixed_layer_depth: ObservedMetric;
+  coverage: {
+    deep_profile_fraction: number;
+    latitude_min: number;
+    latitude_max: number;
+    longitude_min: number;
+    longitude_max: number;
+  };
+};
+
+type OisstObservation = {
+  date: string;
+  value: number;
+  units: string;
+  quality: string;
+  revision: string;
+  provisional: boolean;
+  anomaly: number;
+  baseline: string;
+};
+
 type ObservationalBeta = {
-  argo?: { accepted_profiles?: number; months?: Array<{ month: string }> };
-  oisst?: { observations?: Array<{ value: number }> };
+  argo?: {
+    accepted_profiles?: number;
+    rejected_profile_count?: number;
+    dataset_mode?: string;
+    caveat?: string;
+    months?: ArgoMonth[];
+  };
+  oisst?: {
+    generated_at?: string;
+    dataset_mode?: string;
+    caveat?: string;
+    region?: { points?: Array<{ latitude: number; longitude: number }> };
+    observations?: OisstObservation[];
+  };
 };
 
 type SnapshotPayload = {
@@ -101,7 +152,8 @@ const mapLegend: Record<MapLayer, Array<{ tone: string; label: string }>> = {
   ],
   evidence: [
     { tone: "key-array", label: "OSNAP transect" },
-    { tone: "key-argo", label: "Argo sampling domain" },
+    { tone: "key-argo", label: "Argo sample footprint" },
+    { tone: "key-oisst", label: "OISST observed point" },
   ],
 };
 
@@ -133,10 +185,73 @@ const familyPresentation: Record<string, { name: string; role: string; explainer
   },
 };
 
+const familyMethod: Record<string, { method: string; watchFor: string; sourceIds: string[] }> = {
+  overturning: {
+    method: "Standardize transport and overturning estimates against their seasonal baselines, then test whether departures persist across releases.",
+    watchFor: "Persistent transport changes that agree across direct arrays—not one unusually strong or weak month.",
+    sourceIds: ["osnap", "rapid"],
+  },
+  density: {
+    method: "Combine temperature and salinity profiles into density and upper-ocean stratification features using TEOS-10 calculations.",
+    watchFor: "Lighter surface water or stronger stratification that repeatedly reduces the conditions favorable for sinking.",
+    sourceIds: ["argo", "en4"],
+  },
+  convection: {
+    method: "Track mixed-layer depth and water-mass transformation proxies in the Labrador, Irminger, and Nordic Seas.",
+    watchFor: "Persistently shallow winter mixing across regions, while accounting for atmospheric forcing and sampling gaps.",
+    sourceIds: ["argo", "copernicus-phy"],
+  },
+  freshwater: {
+    method: "Compare salinity, ice, runoff, mass-change, and atmospheric forcing indicators without assuming one freshwater pathway dominates.",
+    watchFor: "Coherent freshening that reaches water-mass formation regions and persists beyond short-lived weather variability.",
+    sourceIds: ["argo", "era5", "nsidc-sic", "grace-fo"],
+  },
+  thermalPattern: {
+    method: "Measure the spatial shape and persistence of sea-surface temperature departures, with seasonal baselines kept explicit.",
+    watchFor: "A durable subpolar pattern that agrees with subsurface and circulation evidence—not an isolated cold or warm point.",
+    sourceIds: ["oisst"],
+  },
+};
+
+type TimedSample<T> = { sample: T; aligned: boolean };
+
+function selectTimedSample<T>(items: T[] | undefined, dateOf: (item: T) => string, targetMonth: string): TimedSample<T> | null {
+  if (!items?.length) return null;
+  const ordered = [...items].sort((left, right) => dateOf(left).localeCompare(dateOf(right)));
+  const exact = ordered.find((item) => dateOf(item).slice(0, 7) === targetMonth);
+  if (exact) return { sample: exact, aligned: true };
+  const prior = ordered.filter((item) => dateOf(item).slice(0, 7) < targetMonth).at(-1);
+  return { sample: prior ?? ordered[0], aligned: false };
+}
+
+function formatObservedMetric(metric: ObservedMetric | undefined, digits: number, units: string) {
+  if (!metric || metric.mean === null) return "Not resolved";
+  const uncertainty = metric.uncertainty === null ? "" : ` ± ${metric.uncertainty.toFixed(digits)}`;
+  return `${metric.mean.toFixed(digits)}${uncertainty} ${units}`;
+}
+
+function SignalTrend({ values }: { values: Array<{ date: string; value: number | null }> }) {
+  const observed = values.filter((item): item is { date: string; value: number } => item.value !== null && Number.isFinite(item.value));
+  const width = 560;
+  const height = 132;
+  const margin = 16;
+  const maxAbs = Math.max(1, ...observed.map((item) => Math.abs(item.value)));
+  const xFor = (index: number) => observed.length <= 1 ? width / 2 : margin + (index / (observed.length - 1)) * (width - margin * 2);
+  const yFor = (value: number) => height / 2 - (value / maxAbs) * (height / 2 - margin);
+  const points = observed.map((item, index) => `${xFor(index)},${yFor(item.value)}`).join(" ");
+
+  return <svg className="signal-trend" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Signed anomaly through the available versioned assessment history">
+    <line x1={margin} y1={height / 2} x2={width - margin} y2={height / 2} />
+    {observed.length > 1 && <polyline points={points} />}
+    {observed.map((item, index) => <circle key={`${item.date}-${index}`} cx={xFor(index)} cy={yFor(item.value)} r={index === observed.length - 1 ? 4.5 : 3} />)}
+  </svg>;
+}
+
 function formatMonth(value?: string) {
   if (!value) return "—";
+  const dateValue = value.length >= 10 ? value.slice(0, 10) : `${value.slice(0, 7)}-01`;
   return new Intl.DateTimeFormat("en", { month: "short", year: "numeric", timeZone: "UTC" })
-    .format(new Date(`${value.slice(0, 10)}T00:00:00Z`))
+    .format(new Date(`${dateValue}T00:00:00Z`))
     .toUpperCase();
 }
 
@@ -163,6 +278,7 @@ function tierLabel(tier: string) {
 export default function Home() {
   const [layer, setLayer] = useState<MapLayer>("circulation");
   const [selectedSnapshot, setSelectedSnapshot] = useState(0);
+  const [selectedFamily, setSelectedFamily] = useState<string | null>(null);
   const [playing, setPlaying] = useState(false);
   const [sourceFilter, setSourceFilter] = useState("All");
   const [data, setData] = useState<AssessmentResponse | null>(null);
@@ -202,7 +318,38 @@ export default function Home() {
   const assessment = payload?.assessment ?? null;
   const validation = payload?.validation ?? null;
   const sources = payload?.sources ?? [];
+  const observationalBeta = payload?.observationalBeta ?? data?.observationalBeta;
   const operational = Boolean(assessment?.operationalEligible && validation?.productionEligible);
+  const targetMonth = (snapshot?.environmentalDate ?? assessment?.asOf ?? "").slice(0, 7);
+  const selectedArgo = selectTimedSample(observationalBeta?.argo?.months, (item) => item.month, targetMonth);
+  const selectedOisst = selectTimedSample(observationalBeta?.oisst?.observations, (item) => item.date, targetMonth);
+  const oisstPoint = observationalBeta?.oisst?.region?.points?.[0];
+  const mapObservations: MapObservations = {
+    targetMonth,
+    ...(selectedArgo ? {
+      argo: {
+        month: selectedArgo.sample.month,
+        profileCount: selectedArgo.sample.profile_count,
+        aligned: selectedArgo.aligned,
+        bounds: {
+          latitudeMin: selectedArgo.sample.coverage.latitude_min,
+          latitudeMax: selectedArgo.sample.coverage.latitude_max,
+          longitudeMin: selectedArgo.sample.coverage.longitude_min,
+          longitudeMax: selectedArgo.sample.coverage.longitude_max,
+        },
+      },
+    } : {}),
+    ...(selectedOisst && oisstPoint ? {
+      oisst: {
+        month: selectedOisst.sample.date,
+        value: selectedOisst.sample.value,
+        units: selectedOisst.sample.units,
+        aligned: selectedOisst.aligned,
+        latitude: oisstPoint.latitude,
+        longitude: oisstPoint.longitude,
+      },
+    } : {}),
+  };
 
   const visibleSources = sources.filter((source) => sourceFilter === "All" || tierLabel(source.tier) === sourceFilter);
   const snapshotLabel = snapshot ? formatMonth(snapshot.environmentalDate) : "LOADING";
@@ -212,6 +359,40 @@ export default function Home() {
       ? "OPERATIONAL SNAPSHOT"
       : data.dataState.storage === "supabase" ? "RESEARCH SNAPSHOT" : "LOCAL RESEARCH FIXTURE";
   const latestPipelineRun = data?.pipelineStatus?.[0];
+  const activeFamily = assessment?.families.find((family) => family.family === selectedFamily) ?? null;
+  const activePresentation = selectedFamily ? familyPresentation[selectedFamily] : null;
+  const activeMethod = selectedFamily ? familyMethod[selectedFamily] : null;
+  const activeSources = activeMethod ? sources.filter((source) => activeMethod.sourceIds.includes(source.id)) : [];
+  const activeHistory = selectedFamily ? history.map((item) => ({
+    date: item.environmentalDate,
+    value: item.payload.assessment.families.find((family) => family.family === selectedFamily)?.latestZ ?? null,
+  })) : [];
+
+  const observedReadings = (() => {
+    if (!selectedFamily) return [];
+    const argoMonth = selectedArgo?.sample;
+    const oisst = selectedOisst?.sample;
+    if (selectedFamily === "density") return [
+      { label: "Surface density", value: formatObservedMetric(argoMonth?.surface_density, 2, "kg m⁻³") },
+      { label: "0–200 m stratification", value: formatObservedMetric(argoMonth?.stratification_0_200m, 2, "kg m⁻³") },
+    ];
+    if (selectedFamily === "convection") return [
+      { label: "Mixed-layer depth", value: formatObservedMetric(argoMonth?.mixed_layer_depth, 1, "dbar") },
+      { label: "Deep-profile fraction", value: argoMonth ? `${Math.round(argoMonth.coverage.deep_profile_fraction * 100)}%` : "Not connected" },
+    ];
+    if (selectedFamily === "freshwater") return [
+      { label: "0–1000 m freshwater", value: formatObservedMetric(argoMonth?.freshwater_0_1000m, 2, "m equivalent") },
+      { label: "Profiles meeting depth need", value: argoMonth ? String(argoMonth.freshwater_0_1000m.count) : "Not connected" },
+    ];
+    if (selectedFamily === "thermalPattern") return [
+      { label: "Observed SST point", value: oisst ? `${oisst.value.toFixed(2)} °C` : "Not connected" },
+      { label: "Point location", value: oisstPoint ? `${oisstPoint.latitude.toFixed(0)}° N · ${Math.abs(oisstPoint.longitude).toFixed(0)}° W` : "Not connected" },
+    ];
+    return [
+      { label: "Direct transport feed", value: "Planned" },
+      { label: "Current headline input", value: "Versioned research fixture" },
+    ];
+  })();
 
   function togglePlayback() {
     if (playing) {
@@ -232,12 +413,17 @@ export default function Home() {
     }, 900);
   }
 
+  function inspectFamily(family: string) {
+    setSelectedFamily(family);
+    window.setTimeout(() => document.getElementById("signal-detail")?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 0);
+  }
+
   return (
     <main>
       <header className="topbar">
         <a className="brand" href="#top" aria-label="AMOC Watch home"><span className="brand-mark" /> AMOC WATCH</a>
         <nav aria-label="Main navigation">
-          <a href="#observe">Observe</a><a href="#evidence">Evidence</a><a href="#learn">Learn</a><a href="#sources">Sources</a>
+          <a href="#observe">Observe</a><a href="#evidence">Evidence</a><a href="#learn">Learn</a><a href="#method">Method</a><a href="#sources">Sources</a>
         </nav>
         <div className="update" title={loadError ?? data?.dataState.message}><span className={`pulse ${operational ? "" : "research"}`} /> {statusLabel} · {snapshotLabel}</div>
       </header>
@@ -251,7 +437,7 @@ export default function Home() {
         </div>
 
         <div className={`map map-${layer}`}>
-          <NorthAtlanticMap layer={layer} />
+          <NorthAtlanticMap layer={layer} observations={mapObservations} />
           <div className="map-caption">
             <span className="caption-index">{String(mapLayers.indexOf(layer) + 1).padStart(2, "0")} / 03 · {copy.label}</span>
             <h2>{copy.title}</h2>
@@ -260,11 +446,11 @@ export default function Home() {
           <div className="map-key" aria-hidden="true">
             {mapLegend[layer].map((item) => <span key={item.label}><i className={item.tone} /> {item.label}</span>)}
           </div>
-          <p className="map-caveat">Geographic coastlines · Schematic flow paths · Not a velocity field</p>
+          <p className="map-caveat">{layer === "evidence" ? "Reference transects · Bounded observed samples · Month labels show alignment" : "Geographic coastlines · Schematic flow paths · Not a velocity field"}</p>
         </div>
 
         <div className="layer-tabs" aria-label="Map layers">
-          {mapLayers.map((item, index) => <button key={item} onClick={() => setLayer(item)} className={layer === item ? "active" : ""} aria-pressed={layer === item}><b>0{index + 1}</b>{item}</button>)}
+          {mapLayers.map((item, index) => <button key={item} onClick={() => setLayer(item)} className={layer === item ? "active" : ""} aria-pressed={layer === item}><b>0{index + 1}</b>{item === "evidence" ? "observations" : item}</button>)}
         </div>
       </section>
 
@@ -318,7 +504,7 @@ export default function Home() {
           {(assessment?.families ?? []).map((family, index) => {
             const presentation = familyPresentation[family.family] ?? { name: family.family, role: "Model family", explainer: "A grouped physical signal used by the monitoring model." };
             const state = familyState(family.score, family.available);
-            return <article className="signal" key={family.family}>
+            return <article className={`signal ${selectedFamily === family.family ? "selected" : ""}`} key={family.family}>
               <div className="signal-top"><span>{String(index + 1).padStart(2, "0")}</span><span className={`state ${state.tone}`}>{state.label}</span></div>
               <h3>{presentation.name}</h3>
               <p className="signal-explainer">{presentation.explainer}</p>
@@ -327,10 +513,69 @@ export default function Home() {
               <div className="evidence-bar" role="img" aria-label={`${Math.round(family.score * 100)} percent family evidence`}><i style={{ width: `${family.score * 100}%` }}/></div>
               <div className="signal-metrics"><span><b>{Math.round(family.score * 100)}%</b> evidence</span><span><b>{Math.round(family.coverage * 100)}%</b> coverage</span></div>
               <p className="signal-source">{presentation.role}</p>
+              <button className="signal-open" onClick={() => inspectFamily(family.family)} aria-expanded={selectedFamily === family.family} aria-controls="signal-detail">Inspect evidence <span aria-hidden="true">→</span></button>
             </article>;
           })}
           {!assessment && <article className="signal signal-loading"><h3>Assessment loading</h3><p>No model values are displayed until a versioned snapshot is available.</p></article>}
         </div>
+
+        {selectedFamily && activeFamily && activePresentation && activeMethod && <section className="signal-detail" id="signal-detail" aria-labelledby="signal-detail-title">
+          <div className="signal-detail-heading">
+            <div>
+              <p className="eyebrow">Signal detail · {formatMonth(snapshot?.environmentalDate)}</p>
+              <h3 id="signal-detail-title">{activePresentation.name}</h3>
+              <p>{activePresentation.explainer}</p>
+            </div>
+            <button className="signal-close" onClick={() => setSelectedFamily(null)} aria-label={`Close ${activePresentation.name} detail`}>Close ×</button>
+          </div>
+          <div className="signal-detail-grid">
+            <article className="detail-trend">
+              <span className="detail-label">VERSIONED σ HISTORY</span>
+              <SignalTrend values={activeHistory} />
+              <div className="trend-range"><span>{formatMonth(activeHistory[0]?.date)}</span><b>{activeFamily.latestZ === null ? "No current anomaly" : `${activeFamily.latestZ >= 0 ? "+" : ""}${activeFamily.latestZ.toFixed(2)}σ selected`}</b><span>{formatMonth(activeHistory.at(-1)?.date)}</span></div>
+              <p>{activeMethod.watchFor}</p>
+            </article>
+            <article className="detail-observations">
+              <span className="detail-label">CONNECTED OBSERVATION</span>
+              <div className="observation-status">
+                {selectedFamily === "thermalPattern" && selectedOisst ? `${selectedOisst.aligned ? "MATCHED" : "NEAREST"} · OISST ${formatMonth(selectedOisst.sample.date)}` : selectedFamily !== "overturning" && selectedArgo ? `${selectedArgo.aligned ? "MATCHED" : "NEAREST"} · ARGO ${formatMonth(selectedArgo.sample.month)}` : "NOT YET CONNECTED"}
+              </div>
+              <dl>
+                {observedReadings.map((reading) => <div key={reading.label}><dt>{reading.label}</dt><dd>{reading.value}</dd></div>)}
+              </dl>
+              <p>{selectedFamily === "thermalPattern" ? observationalBeta?.oisst?.caveat : selectedFamily === "overturning" ? "Direct transport sources are listed, but their published values are not yet connected to this interface." : observationalBeta?.argo?.caveat}</p>
+            </article>
+            <article className="detail-method">
+              <span className="detail-label">METHOD + FRESHNESS</span>
+              <p>{activeMethod.method}</p>
+              <dl className="detail-dates">
+                <div><dt>Environmental state</dt><dd>{formatMonth(snapshot?.environmentalDate)}</dd></div>
+                <div><dt>Knowledge state</dt><dd>{formatKnowledgeDate(snapshot?.knowledgeDate)}</dd></div>
+                <div><dt>Model version</dt><dd>v{snapshot?.modelVersion ?? assessment.modelVersion}</dd></div>
+              </dl>
+              <ul className="detail-sources">
+                {activeSources.map((source) => <li key={source.id}><span>{source.url ? <a href={source.url} target="_blank" rel="noreferrer">{source.name ?? source.id}</a> : source.name ?? source.id}</span><small>{source.cadence} · {source.latency} · {source.revision ?? source.adapter}</small></li>)}
+              </ul>
+            </article>
+          </div>
+          <p className="detail-caveat">Connected observations are bounded pipeline-validation samples and are excluded from the headline regime assessment until coverage, hindcasts, and calibration gates pass.</p>
+        </section>}
+      </section>
+
+      <section className="method" id="method">
+        <div className="section-heading method-heading">
+          <div><p className="eyebrow">Reading the observatory</p><h2>Method, without the fog</h2></div>
+          <p>AMOC Watch keeps physical signals separate. It does not compress them into a single alarm level, and it withholds transition probability while validation remains incomplete.</p>
+        </div>
+        <div className="glossary-grid">
+          <article><span>01</span><h3>σ anomaly</h3><p>How far a variable sits from its seasonally expected baseline, measured in standard deviations. The sign shows direction; persistence matters more than one point.</p></article>
+          <article><span>02</span><h3>Evidence</h3><p>A model-family measure of how unusual and persistent the recent behavior is. It is not the probability of AMOC collapse or transition.</p></article>
+          <article><span>03</span><h3>Coverage</h3><p>The share of expected input data available for that family and month. High evidence with weak coverage should be treated cautiously.</p></article>
+          <article><span>04</span><h3>Environmental state</h3><p>The ocean month being described. This is distinct from when data were processed or when the assessment was published.</p></article>
+          <article><span>05</span><h3>Knowledge state</h3><p>What data and revisions were available to the model at that point in time. Earlier knowledge states remain reconstructable.</p></article>
+          <article><span>06</span><h3>Preliminary + revised</h3><p>Fast data can be corrected after quality control. A revision creates a new versioned assessment instead of silently replacing the old result.</p></article>
+        </div>
+        <aside className="method-note"><b>Current boundary</b><p>The map&apos;s circulation and freshwater routes are explanatory schematics. Only features labeled with a dataset, month, and value or footprint represent connected observations.</p><a href="#sources">Open the evidence ledger →</a></aside>
       </section>
 
       <section className="sources" id="sources">
