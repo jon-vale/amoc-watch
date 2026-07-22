@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { NorthAtlanticMap, type MapLayer } from "./components/NorthAtlanticMap";
 
 type FamilyAssessment = {
@@ -90,8 +90,10 @@ const mapLayers: MapLayer[] = ["circulation", "freshwater", "evidence"];
 
 const mapLegend: Record<MapLayer, Array<{ tone: string; label: string }>> = {
   circulation: [
-    { tone: "key-warm", label: "Warm upper limb" },
-    { tone: "key-cold", label: "Deep return · schematic" },
+    { tone: "key-warm", label: "Warm surface currents" },
+    { tone: "key-cold", label: "Cold deep currents" },
+    { tone: "key-coastal", label: "Coastal currents" },
+    { tone: "key-sinking", label: "Water-mass transformation" },
   ],
   freshwater: [
     { tone: "key-fresh", label: "Freshwater pathway" },
@@ -103,12 +105,32 @@ const mapLegend: Record<MapLayer, Array<{ tone: string; label: string }>> = {
   ],
 };
 
-const familyPresentation: Record<string, { name: string; role: string }> = {
-  overturning: { name: "Overturning", role: "Direct arrays and transport estimates" },
-  density: { name: "Density structure", role: "Temperature and salinity profiles" },
-  convection: { name: "Deep convection", role: "Mixed-layer and water-mass proxies" },
-  freshwater: { name: "Freshwater pressure", role: "Salinity, ice, runoff, and forcing" },
-  thermalPattern: { name: "Thermal pattern", role: "Spatial sea-surface temperature field" },
+const familyPresentation: Record<string, { name: string; role: string; explainer: string }> = {
+  overturning: {
+    name: "Overturning",
+    role: "Direct arrays and transport estimates",
+    explainer: "How much water moves north near the surface and returns south at depth.",
+  },
+  density: {
+    name: "Density structure",
+    role: "Temperature and salinity profiles",
+    explainer: "Whether temperature and salinity make surface water dense enough to sink.",
+  },
+  convection: {
+    name: "Deep convection",
+    role: "Mixed-layer and water-mass proxies",
+    explainer: "How deeply winter cooling and mixing reach into the ocean.",
+  },
+  freshwater: {
+    name: "Freshwater pressure",
+    role: "Salinity, ice, runoff, and forcing",
+    explainer: "Freshening that can make surface water lighter and resist sinking.",
+  },
+  thermalPattern: {
+    name: "Thermal pattern",
+    role: "Spatial sea-surface temperature field",
+    explainer: "The shape and persistence of North Atlantic surface-temperature anomalies.",
+  },
 };
 
 function formatMonth(value?: string) {
@@ -142,7 +164,6 @@ export default function Home() {
   const [layer, setLayer] = useState<MapLayer>("circulation");
   const [selectedSnapshot, setSelectedSnapshot] = useState(0);
   const [playing, setPlaying] = useState(false);
-  const [expanded, setExpanded] = useState(false);
   const [sourceFilter, setSourceFilter] = useState("All");
   const [data, setData] = useState<AssessmentResponse | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -182,20 +203,6 @@ export default function Home() {
   const validation = payload?.validation ?? null;
   const sources = payload?.sources ?? [];
   const operational = Boolean(assessment?.operationalEligible && validation?.productionEligible);
-  const evidence = assessment?.evidence ?? 0;
-  const dataCoherence = assessment?.dataCoherence ?? assessment?.confidence ?? 0;
-
-  const observedBeta = useMemo(() => {
-    const argoMonth = payload?.observationalBeta?.argo?.months?.at(-1);
-    const oisst = payload?.observationalBeta?.oisst?.observations ?? [];
-    if (!payload?.observationalBeta) return null;
-    return {
-      argoProfiles: payload.observationalBeta.argo?.accepted_profiles ?? 0,
-      argoMonth: argoMonth?.month ?? "—",
-      oisstMonths: oisst.length,
-      oisstLatest: oisst.at(-1)?.value ?? null,
-    };
-  }, [payload]);
 
   const visibleSources = sources.filter((source) => sourceFilter === "All" || tierLabel(source.tier) === sourceFilter);
   const snapshotLabel = snapshot ? formatMonth(snapshot.environmentalDate) : "LOADING";
@@ -301,34 +308,28 @@ export default function Home() {
           </div>
         </div>
 
+        <div className="signal-reading-guide" aria-label="How to read the signal cards">
+          <span><b>σ anomaly</b> Signed distance from that variable&apos;s seasonal baseline.</span>
+          <span><b>Evidence</b> Strength and persistence of unusual behavior.</span>
+          <span><b>Coverage</b> Share of expected observations available.</span>
+        </div>
+
         <div className="signal-grid" id="evidence">
           {(assessment?.families ?? []).map((family, index) => {
-            const presentation = familyPresentation[family.family] ?? { name: family.family, role: "Model family" };
+            const presentation = familyPresentation[family.family] ?? { name: family.family, role: "Model family", explainer: "A grouped physical signal used by the monitoring model." };
             const state = familyState(family.score, family.available);
             return <article className="signal" key={family.family}>
               <div className="signal-top"><span>{String(index + 1).padStart(2, "0")}</span><span className={`state ${state.tone}`}>{state.label}</span></div>
-              <h3>{presentation.name}</h3><strong>{family.latestZ === null ? "—" : `${family.latestZ >= 0 ? "+" : ""}${family.latestZ.toFixed(2)}σ`}</strong>
+              <h3>{presentation.name}</h3>
+              <p className="signal-explainer">{presentation.explainer}</p>
+              <span className="signal-value-label">LATEST σ ANOMALY</span>
+              <strong>{family.latestZ === null ? "—" : `${family.latestZ >= 0 ? "+" : ""}${family.latestZ.toFixed(2)}σ`}</strong>
               <div className="evidence-bar" role="img" aria-label={`${Math.round(family.score * 100)} percent family evidence`}><i style={{ width: `${family.score * 100}%` }}/></div>
-              <p>{presentation.role} · {Math.round(family.coverage * 100)}% coverage</p>
+              <div className="signal-metrics"><span><b>{Math.round(family.score * 100)}%</b> evidence</span><span><b>{Math.round(family.coverage * 100)}%</b> coverage</span></div>
+              <p className="signal-source">{presentation.role}</p>
             </article>;
           })}
           {!assessment && <article className="signal signal-loading"><h3>Assessment loading</h3><p>No model values are displayed until a versioned snapshot is available.</p></article>}
-        </div>
-      </section>
-
-      <section className="risk" id="about">
-        <div className="risk-copy"><p className="eyebrow">Research classification</p><h2>Change is not the same as collapse.</h2><p>The model asks a narrower question: does the current configuration still resemble recent variability, or is it becoming a different and persistent statistical state?</p><button onClick={() => setExpanded(!expanded)} aria-expanded={expanded}>{expanded ? "Hide model framing" : "How the assessment works"} <span>{expanded ? "−" : "+"}</span></button></div>
-        <div className="risk-panel">
-          <div className="risk-header"><span>REGIME EVIDENCE</span><span>MONTHLY MODEL · v{assessment?.modelVersion ?? "—"}</span></div>
-          <div className="risk-scale"><div className="scale-fill" style={{ right: `${100 - evidence * 100}%` }}/><i className="scale-marker" style={{ left: `calc(${evidence * 100}% - 11px)` }}/></div>
-          <div className="scale-labels"><span>Recent range</span><span>Unusual</span><span>Persistent</span><span>Possible shift</span></div>
-          <div className="risk-result"><span>{operational ? "Current assessment" : "Public assessment"}</span><strong>{operational ? assessment?.regime : "Research output only"}</strong></div>
-          {!operational && assessment && <p className="research-classification">Illustrative classification: <b>{assessment.regime}</b></p>}
-          <div className="model-numbers"><span><b>{assessment ? `${Math.round(evidence * 100)}%` : "—"}</b> evidence index</span><span><b>{operational && assessment?.transitionRisk !== null ? `${Math.round((assessment?.transitionRisk ?? 0) * 100)}%` : "WITHHELD"}</b> 5-year probability</span><span><b>{assessment ? `${Math.round(dataCoherence * 100)}%` : "—"}</b> coverage + agreement</span></div>
-          <div className="validation-gate"><i className={operational ? "eligible" : "blocked"}/><span><b>{validation?.status ?? "validation pending"}</b> · Public operational claims {operational ? "enabled" : "blocked"}{validation?.brier != null ? ` · synthetic-test Brier ${validation.brier.toFixed(3)}` : ""}</span></div>
-          {observedBeta && <div className="observed-beta"><div><span>REAL ARGO SAMPLE</span><b>{observedBeta.argoProfiles} profiles</b><small>{observedBeta.argoMonth} · validation only</small></div><div><span>REAL OISST SAMPLE</span><b>{observedBeta.oisstLatest === null ? "—" : `${observedBeta.oisstLatest.toFixed(2)}°C`}</b><small>{observedBeta.oisstMonths} observed months</small></div><p>Observed pipeline evidence · excluded from the research classification</p></div>}
-          <p className="risk-note">{assessment?.caveat ?? "Waiting for a versioned assessment."}</p>
-          {expanded && <div className="method"><b>Evidence, not an alarm.</b> The research model combines seasonal anomalies, persistence, coverage, and agreement across physical families. A probability is not published until its coefficients and event definition pass blocked observational and CMIP hindcasts. Current feed: <code>{assessment?.datasetMode ?? "unavailable"}</code>.</div>}
         </div>
       </section>
 
