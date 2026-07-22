@@ -24,6 +24,7 @@ class ProfileReductionTests(unittest.TestCase):
         self.assertGreater(result.stratification_0_200m, 0)
         self.assertGreater(result.freshwater_0_1000m, 0)
         self.assertLessEqual(result.mixed_layer_depth, 200)
+        self.assertIn(result.thermodynamic_method, ("TEOS-10/GSW", "EOS-80 engineering fallback"))
 
     def test_quality_control_removes_bad_levels(self):
         profile = synthetic()

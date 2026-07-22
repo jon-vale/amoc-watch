@@ -1,0 +1,45 @@
+{
+  "schema_version": "1.0",
+  "source": "Argo GDAC weekly profile index",
+  "dataset_mode": "bounded-real-observation-sample",
+  "accepted_profiles": 9,
+  "rejected_profile_count": 12,
+  "caveat": "Small provisional sample for pipeline validation; excluded from headline regime assessment.",
+  "months": [
+    {
+      "month": "2026-07",
+      "profile_count": 9,
+      "provisional_fraction": 1,
+      "thermodynamic_methods": [
+        "TEOS-10/GSW"
+      ],
+      "surface_density": {
+        "mean": 1026.6501093849615,
+        "uncertainty": 0.16989555691348582,
+        "count": 9
+      },
+      "stratification_0_200m": {
+        "mean": 0.9829897457864768,
+        "uncertainty": 0.15950318594956897,
+        "count": 9
+      },
+      "freshwater_0_1000m": {
+        "mean": null,
+        "uncertainty": null,
+        "count": 0
+      },
+      "mixed_layer_depth": {
+        "mean": 14.56489896774292,
+        "uncertainty": 2.153737333987514,
+        "count": 9
+      },
+      "coverage": {
+        "deep_profile_fraction": 0.8888888888888888,
+        "latitude_min": 45.81729507446289,
+        "latitude_max": 60.042110443115234,
+        "longitude_min": -56.96942138671875,
+        "longitude_max": -38.93183898925781
+      }
+    }
+  ]
+}

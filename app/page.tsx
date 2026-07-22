@@ -34,13 +34,19 @@ export default function Home() {
   const [sourceFilter, setSourceFilter] = useState("All");
   const [assessment, setAssessment] = useState<{ regime: string; evidence: number; transitionRisk: number; confidence: number; modelVersion: string; datasetMode: string } | null>(null);
   const [validation, setValidation] = useState<{ status: string; productionEligible: boolean; brier: number | null } | null>(null);
+  const [observedBeta, setObservedBeta] = useState<{ argoProfiles: number; argoMonth: string; oisstMonths: number; oisstLatest: number } | null>(null);
   const copy = layerCopy[layer];
   const date = useMemo(() => `${months[month]} 2026`, [month]);
 
   useEffect(() => {
     let active = true;
     fetch("/api/assessment").then((response) => response.json()).then((payload) => {
-      if (active) { setAssessment(payload.assessment); setValidation(payload.validation); }
+      if (active) {
+        setAssessment(payload.assessment); setValidation(payload.validation);
+        const argoMonth = payload.observationalBeta?.argo?.months?.at(-1);
+        const oisst = payload.observationalBeta?.oisst?.observations ?? [];
+        setObservedBeta({ argoProfiles: payload.observationalBeta?.argo?.accepted_profiles ?? 0, argoMonth: argoMonth?.month ?? "—", oisstMonths: oisst.length, oisstLatest: oisst.at(-1)?.value ?? 0 });
+      }
     }).catch(() => undefined);
     return () => { active = false; };
   }, []);
@@ -156,6 +162,7 @@ export default function Home() {
           <div className="risk-result"><span>Current assessment</span><strong>{assessment?.regime ?? "Persistent anomaly"}</strong></div>
           <div className="model-numbers"><span><b>{Math.round((assessment?.evidence ?? .66) * 100)}%</b> evidence index</span><span><b>{Math.round((assessment?.transitionRisk ?? .28) * 100)}%</b> 5-year diagnostic</span><span><b>{Math.round((assessment?.confidence ?? .72) * 100)}%</b> model confidence</span></div>
           <div className="validation-gate"><i className={validation?.productionEligible ? "eligible" : "blocked"}/><span><b>{validation?.status ?? "validation pending"}</b> · Public operational claims {validation?.productionEligible ? "enabled" : "blocked"}{validation?.brier != null ? ` · Brier ${validation.brier.toFixed(3)}` : ""}</span></div>
+          {observedBeta && <div className="observed-beta"><div><span>REAL ARGO SAMPLE</span><b>{observedBeta.argoProfiles} profiles</b><small>{observedBeta.argoMonth} · TEOS-10</small></div><div><span>REAL OISST SAMPLE</span><b>{observedBeta.oisstLatest.toFixed(2)}°C</b><small>{observedBeta.oisstMonths} observed months</small></div><p>Validation evidence only · excluded from headline score</p></div>}
           <p className="risk-note">Several related signals remain outside their recent range. Evidence is not sufficient to infer a regime transition.</p>
           {expanded && <div className="method"><b>Evidence, not an alarm.</b> The prototype combines density structure, convection, freshwater pressure, spatial fingerprints, and transport estimates. Direct observations validate the model as new releases become available. Current feed: <code>{assessment?.datasetMode ?? "illustrative-fixture"}</code>.</div>}
         </div>

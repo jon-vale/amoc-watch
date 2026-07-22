@@ -39,6 +39,7 @@ class ProfileMetrics:
     maximum_pressure: float
     valid_levels: int
     provisional: bool
+    thermodynamic_method: str
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -60,6 +61,21 @@ def density_eos80(salinity: float, temperature: float) -> float:
     a = 0.824493 - 4.0899e-3 * t + 7.6438e-5 * t**2 - 8.2467e-7 * t**3 + 5.3875e-9 * t**4
     b = -5.72466e-3 + 1.0227e-4 * t - 1.6546e-6 * t**2
     return pure + a * s + b * s**1.5 + 4.8314e-4 * s**2
+
+
+def density_teos10(salinity: float, temperature: float, pressure: float, longitude: float, latitude: float) -> float:
+    import gsw
+
+    absolute_salinity = float(gsw.SA_from_SP(salinity, pressure, longitude, latitude))
+    conservative_temperature = float(gsw.CT_from_t(absolute_salinity, temperature, pressure))
+    return 1000.0 + float(gsw.sigma0(absolute_salinity, conservative_temperature))
+
+
+def _density(profile: Profile, salinity: float, temperature: float, pressure: float) -> tuple[float, str]:
+    try:
+        return density_teos10(salinity, temperature, pressure, profile.longitude, profile.latitude), "TEOS-10/GSW"
+    except ImportError:
+        return density_eos80(salinity, temperature), "EOS-80 engineering fallback"
 
 
 def _clean(profile: Profile) -> list[tuple[float, float, float]]:
@@ -109,13 +125,14 @@ def reduce_profile(profile: Profile) -> ProfileMetrics:
         raise ValueError("profile has fewer than three valid levels")
     surface_t = _interpolate(rows, max(0.0, rows[0][0]), 1)
     surface_s = _interpolate(rows, max(0.0, rows[0][0]), 2)
-    surface_density = density_eos80(surface_s, surface_t)
+    surface_pressure = max(0.0, rows[0][0])
+    surface_density, method = _density(profile, surface_s, surface_t, surface_pressure)
     t200, s200 = _interpolate(rows, 200.0, 1), _interpolate(rows, 200.0, 2)
-    density_200 = density_eos80(s200, t200) if t200 is not None and s200 is not None else None
+    density_200 = _density(profile, s200, t200, 200.0)[0] if t200 is not None and s200 is not None else None
     stratification = density_200 - surface_density if density_200 is not None else None
     mld = None
     for pressure, temperature, salinity in rows:
-        if density_eos80(salinity, temperature) - surface_density >= 0.03:
+        if _density(profile, salinity, temperature, pressure)[0] - surface_density >= 0.03:
             mld = pressure
             break
     month = datetime.fromisoformat(profile.observed_at.replace("Z", "+00:00")).strftime("%Y-%m")
@@ -125,7 +142,7 @@ def reduce_profile(profile: Profile) -> ProfileMetrics:
         surface_density=surface_density, density_200m=density_200,
         stratification_0_200m=stratification,
         freshwater_0_1000m=_integrate_freshwater(rows), mixed_layer_depth=mld,
-        maximum_pressure=rows[-1][0], valid_levels=len(rows), provisional=profile.provisional,
+        maximum_pressure=rows[-1][0], valid_levels=len(rows), provisional=profile.provisional, thermodynamic_method=method,
     )
 
 
@@ -146,6 +163,7 @@ def aggregate_month(metrics: Sequence[ProfileMetrics]) -> dict:
     return {
         "month": next(iter(months)), "profile_count": len(metrics),
         "provisional_fraction": sum(item.provisional for item in metrics) / len(metrics),
+        "thermodynamic_methods": sorted({item.thermodynamic_method for item in metrics}),
         "surface_density": _summary(item.surface_density for item in metrics),
         "stratification_0_200m": _summary(item.stratification_0_200m for item in metrics),
         "freshwater_0_1000m": _summary(item.freshwater_0_1000m for item in metrics),

@@ -1,0 +1,110 @@
+{
+  "schema_version": "1.0",
+  "generated_at": "2026-07-22T16:35:16.208Z",
+  "source_urls": [
+    "https://www.ncei.noaa.gov/erddap/griddap/ncdc_oisst_v2_avhrr_by_time_zlev_lat_lon.csv?sst%5B(2026-01-01T12%3A00%3A00Z)%3A1%3A(2026-07-05T12%3A00%3A00Z)%5D%5B(0.0)%3A1%3A(0.0)%5D%5B(55.125)%3A1%3A(55.125)%5D%5B(325.125)%3A1%3A(325.125)%5D"
+  ],
+  "region": {
+    "points": [
+      {
+        "latitude": 55,
+        "longitude": -35
+      }
+    ]
+  },
+  "caveat": "Single-point observed thermal snapshot for pipeline validation; not a regional mean or finalized AMOC fingerprint index.",
+  "observations": [
+    {
+      "date": "2026-01",
+      "value": 7.000322445161291,
+      "source": "oisst",
+      "variable": "subpolar_sst_validation_sample",
+      "family": "thermalPattern",
+      "units": "degree_C",
+      "quality": "final",
+      "revision": "v2.1",
+      "provisional": false,
+      "anomaly": 0,
+      "baseline": "2026 seven-month sample mean by calendar month; anomaly is zero until a longer baseline is processed"
+    },
+    {
+      "date": "2026-02",
+      "value": 6.649999867857143,
+      "source": "oisst",
+      "variable": "subpolar_sst_validation_sample",
+      "family": "thermalPattern",
+      "units": "degree_C",
+      "quality": "final",
+      "revision": "v2.1",
+      "provisional": false,
+      "anomaly": 0,
+      "baseline": "2026 seven-month sample mean by calendar month; anomaly is zero until a longer baseline is processed"
+    },
+    {
+      "date": "2026-03",
+      "value": 6.111935396774192,
+      "source": "oisst",
+      "variable": "subpolar_sst_validation_sample",
+      "family": "thermalPattern",
+      "units": "degree_C",
+      "quality": "final",
+      "revision": "v2.1",
+      "provisional": false,
+      "anomaly": 0,
+      "baseline": "2026 seven-month sample mean by calendar month; anomaly is zero until a longer baseline is processed"
+    },
+    {
+      "date": "2026-04",
+      "value": 6.007999946666666,
+      "source": "oisst",
+      "variable": "subpolar_sst_validation_sample",
+      "family": "thermalPattern",
+      "units": "degree_C",
+      "quality": "final",
+      "revision": "v2.1",
+      "provisional": false,
+      "anomaly": 0,
+      "baseline": "2026 seven-month sample mean by calendar month; anomaly is zero until a longer baseline is processed"
+    },
+    {
+      "date": "2026-05",
+      "value": 6.792257993548387,
+      "source": "oisst",
+      "variable": "subpolar_sst_validation_sample",
+      "family": "thermalPattern",
+      "units": "degree_C",
+      "quality": "final",
+      "revision": "v2.1",
+      "provisional": false,
+      "anomaly": 0,
+      "baseline": "2026 seven-month sample mean by calendar month; anomaly is zero until a longer baseline is processed"
+    },
+    {
+      "date": "2026-06",
+      "value": 8.292666523333335,
+      "source": "oisst",
+      "variable": "subpolar_sst_validation_sample",
+      "family": "thermalPattern",
+      "units": "degree_C",
+      "quality": "final",
+      "revision": "v2.1",
+      "provisional": false,
+      "anomaly": 0,
+      "baseline": "2026 seven-month sample mean by calendar month; anomaly is zero until a longer baseline is processed"
+    },
+    {
+      "date": "2026-07",
+      "value": 8.7259998,
+      "source": "oisst",
+      "variable": "subpolar_sst_validation_sample",
+      "family": "thermalPattern",
+      "units": "degree_C",
+      "quality": "final",
+      "revision": "v2.1",
+      "provisional": false,
+      "anomaly": 0,
+      "baseline": "2026 seven-month sample mean by calendar month; anomaly is zero until a longer baseline is processed"
+    }
+  ],
+  "dataset_mode": "bounded-real-observation-sample"
+}

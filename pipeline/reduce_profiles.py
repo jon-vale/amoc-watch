@@ -15,12 +15,17 @@ def main() -> None:
     parser.add_argument("--output", required=True, help="Destination JSON snapshot")
     args = parser.parse_args()
     metrics = []
+    rejected = []
     for source in args.inputs:
-        metrics.extend(reduce_profile(profile) for profile in read_argo_profile(source))
+        for profile in read_argo_profile(source):
+            try:
+                metrics.append(reduce_profile(profile))
+            except ValueError as error:
+                rejected.append({"profile_id": profile.profile_id, "reason": str(error)})
     grouped = {}
     for metric in metrics:
         grouped.setdefault(metric.month, []).append(metric)
-    payload = {"schema_version": "1.0", "months": [aggregate_month(grouped[month]) for month in sorted(grouped)]}
+    payload = {"schema_version": "1.0", "accepted_profiles": len(metrics), "rejected_profiles": rejected, "months": [aggregate_month(grouped[month]) for month in sorted(grouped)]}
     Path(args.output).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
 

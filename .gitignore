@@ -44,3 +44,5 @@ next-env.d.ts
 # python
 __pycache__/
 *.py[cod]
+.venv-science/
+/data-work/
