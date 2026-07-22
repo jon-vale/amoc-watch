@@ -17,11 +17,21 @@ const layerCopy: Record<string, { title: string; body: string; label: string }> 
   evidence: { title: "Many signals, one system", body: "Floats, moorings, satellites, and ocean reanalyses each reveal part of the circulation. The model looks for persistent, coherent change.", label: "Observation coverage" },
 };
 
+const sources = [
+  { name: "OSNAP", type: "Direct", cadence: "Research release", role: "Subpolar overturning & transport", color: "coral" },
+  { name: "Argo", type: "Observed", cadence: "Near real time", role: "Temperature & salinity profiles", color: "cyan" },
+  { name: "Copernicus", type: "Modeled", cadence: "Monthly", role: "Three-dimensional ocean state", color: "lime" },
+  { name: "ERA5", type: "Modeled", cadence: "Monthly", role: "Heat, wind & freshwater forcing", color: "lime" },
+  { name: "NSIDC", type: "Observed", cadence: "Daily", role: "Arctic sea-ice concentration", color: "cyan" },
+  { name: "GRACE-FO", type: "Observed", cadence: "Monthly", role: "Greenland ice-mass change", color: "cyan" },
+];
+
 export default function Home() {
   const [layer, setLayer] = useState("circulation");
   const [month, setMonth] = useState(5);
   const [playing, setPlaying] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [sourceFilter, setSourceFilter] = useState("All");
   const copy = layerCopy[layer];
   const date = useMemo(() => `${months[month]} 2026`, [month]);
 
@@ -47,7 +57,7 @@ export default function Home() {
       <header className="topbar">
         <a className="brand" href="#top" aria-label="AMOC Watch home"><span className="brand-mark" /> AMOC WATCH</a>
         <nav aria-label="Main navigation">
-          <a href="#observe">Observe</a><a href="#evidence">Evidence</a><a href="#about">About</a>
+          <a href="#observe">Observe</a><a href="#evidence">Evidence</a><a href="#learn">Learn</a><a href="#sources">Sources</a>
         </nav>
         <div className="update"><span className="pulse" /> MODEL VIEW · JUN 2026</div>
       </header>
@@ -84,6 +94,20 @@ export default function Home() {
         <div className="layer-tabs" aria-label="Map layers">
           {Object.keys(layerCopy).map((item, i) => <button key={item} onClick={() => setLayer(item)} className={layer === item ? "active" : ""}><b>0{i + 1}</b>{item}</button>)}
         </div>
+      </section>
+
+      <section className="learn" id="learn">
+        <div className="learn-intro">
+          <p className="eyebrow">The system, in three movements</p>
+          <h2>How the Atlantic overturns</h2>
+          <p>AMOC is not a single current or conveyor belt. It is a shifting, three-dimensional circulation shaped by winds, heat, freshwater, and the density of seawater.</p>
+        </div>
+        <div className="movement-grid">
+          <article><span>01</span><div className="movement-orbit warm-orbit"><i/></div><h3>Move heat north</h3><p>Warm, salty upper-ocean water carries heat toward the subpolar Atlantic.</p></article>
+          <article><span>02</span><div className="movement-orbit sink-orbit"><i/></div><h3>Transform water</h3><p>Cooling, mixing, and salt content change density. Dense water can sink into the ocean interior.</p></article>
+          <article><span>03</span><div className="movement-orbit cold-orbit"><i/></div><h3>Return at depth</h3><p>Cold, dense waters flow south, completing an overturning circulation spanning the Atlantic.</p></article>
+        </div>
+        <aside className="threat-note"><b>Where the threat enters</b><p>Ocean warming and additional freshwater can make surface waters lighter. But the response depends on where, when, and how those changes interact with wind and circulation.</p><span>Freshwater is one hypothesis among several—not an assumed answer.</span></aside>
       </section>
 
       <section className="observe" id="observe">
@@ -125,7 +149,25 @@ export default function Home() {
         </div>
       </section>
 
-      <footer><a className="brand" href="#top"><span className="brand-mark"/> AMOC WATCH</a><p>A calm view of a changing ocean.</p><span>Prototype · Data shown are illustrative</span></footer>
+      <section className="sources" id="sources">
+        <div className="section-heading sources-heading">
+          <div><p className="eyebrow">Evidence ledger</p><h2>Trace every signal</h2></div>
+          <p>The operational map will combine fast environmental fields with slower direct observations. Each source keeps its identity, date, and scientific role.</p>
+        </div>
+        <div className="source-filters" aria-label="Filter sources">
+          {["All", "Direct", "Observed", "Modeled"].map((filter) => <button key={filter} onClick={() => setSourceFilter(filter)} className={sourceFilter === filter ? "active" : ""}>{filter}</button>)}
+        </div>
+        <div className="source-list">
+          {sources.filter((source) => sourceFilter === "All" || source.type === sourceFilter).map((source, index) => (
+            <article className="source-row" key={source.name}>
+              <span className="source-index">{String(index + 1).padStart(2, "0")}</span><i className={source.color}/><h3>{source.name}</h3><p>{source.role}</p><span className="source-type">{source.type}</span><span className="cadence">{source.cadence}</span>
+            </article>
+          ))}
+        </div>
+        <div className="knowledge-state"><span>ENVIRONMENTAL STATE</span><b>The ocean month being displayed</b><span>KNOWLEDGE STATE</span><b>What was actually known at that time</b><p>Keeping these dates separate allows honest historical reconstruction without hindsight leakage.</p></div>
+      </section>
+
+      <footer><a className="brand" href="#top"><span className="brand-mark"/> AMOC WATCH</a><p>A calm view of a changing ocean.</p><span>Prototype · Data shown are illustrative · Method v0.1</span></footer>
     </main>
   );
 }
