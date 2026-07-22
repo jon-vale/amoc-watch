@@ -423,7 +423,7 @@ export default function Home() {
       <header className="topbar">
         <a className="brand" href="#top" aria-label="AMOC Watch home"><span className="brand-mark" /> AMOC WATCH</a>
         <nav aria-label="Main navigation">
-          <a href="#observe">Observe</a><a href="#evidence">Evidence</a><a href="#learn">Learn</a><a href="#method">Method</a><a href="#sources">Sources</a>
+          <a href="#observe">Observe</a><a href="#evidence">Evidence</a><a href="#learn">Learn</a><a href="#sources">Sources</a>
         </nav>
         <div className="update" title={loadError ?? data?.dataState.message}><span className={`pulse ${operational ? "" : "research"}`} /> {statusLabel} · {snapshotLabel}</div>
       </header>
@@ -560,22 +560,6 @@ export default function Home() {
           </div>
           <p className="detail-caveat">Connected observations are bounded pipeline-validation samples and are excluded from the headline regime assessment until coverage, hindcasts, and calibration gates pass.</p>
         </section>}
-      </section>
-
-      <section className="method" id="method">
-        <div className="section-heading method-heading">
-          <div><p className="eyebrow">Reading the observatory</p><h2>Method, without the fog</h2></div>
-          <p>AMOC Watch keeps physical signals separate. It does not compress them into a single alarm level, and it withholds transition probability while validation remains incomplete.</p>
-        </div>
-        <div className="glossary-grid">
-          <article><span>01</span><h3>σ anomaly</h3><p>How far a variable sits from its seasonally expected baseline, measured in standard deviations. The sign shows direction; persistence matters more than one point.</p></article>
-          <article><span>02</span><h3>Evidence</h3><p>A model-family measure of how unusual and persistent the recent behavior is. It is not the probability of AMOC collapse or transition.</p></article>
-          <article><span>03</span><h3>Coverage</h3><p>The share of expected input data available for that family and month. High evidence with weak coverage should be treated cautiously.</p></article>
-          <article><span>04</span><h3>Environmental state</h3><p>The ocean month being described. This is distinct from when data were processed or when the assessment was published.</p></article>
-          <article><span>05</span><h3>Knowledge state</h3><p>What data and revisions were available to the model at that point in time. Earlier knowledge states remain reconstructable.</p></article>
-          <article><span>06</span><h3>Preliminary + revised</h3><p>Fast data can be corrected after quality control. A revision creates a new versioned assessment instead of silently replacing the old result.</p></article>
-        </div>
-        <aside className="method-note"><b>Current boundary</b><p>The map&apos;s circulation and freshwater routes are explanatory schematics. Only features labeled with a dataset, month, and value or footprint represent connected observations.</p><a href="#sources">Open the evidence ledger →</a></aside>
       </section>
 
       <section className="sources" id="sources">
