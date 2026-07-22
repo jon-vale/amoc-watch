@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 const months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
 
@@ -32,8 +32,17 @@ export default function Home() {
   const [playing, setPlaying] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [sourceFilter, setSourceFilter] = useState("All");
+  const [assessment, setAssessment] = useState<{ regime: string; evidence: number; transitionRisk: number; confidence: number; modelVersion: string; datasetMode: string } | null>(null);
   const copy = layerCopy[layer];
   const date = useMemo(() => `${months[month]} 2026`, [month]);
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/assessment").then((response) => response.json()).then((payload) => {
+      if (active) setAssessment(payload.assessment);
+    }).catch(() => undefined);
+    return () => { active = false; };
+  }, []);
 
   function togglePlayback() {
     setPlaying((current) => {
@@ -140,12 +149,13 @@ export default function Home() {
       <section className="risk" id="about">
         <div className="risk-copy"><p className="eyebrow">Transition risk</p><h2>Change is not the same as collapse.</h2><p>Our model asks a narrower question: does the current configuration still resemble recent variability, or is it becoming a different and persistent state?</p><button onClick={() => setExpanded(!expanded)}>{expanded ? "Hide model framing" : "How the assessment works"} <span>{expanded ? "−" : "+"}</span></button></div>
         <div className="risk-panel">
-          <div className="risk-header"><span>REGIME EVIDENCE</span><span>MONTHLY MODEL · v0.1</span></div>
-          <div className="risk-scale"><div className="scale-fill"/><i className="scale-marker"/></div>
+          <div className="risk-header"><span>REGIME EVIDENCE</span><span>MONTHLY MODEL · v{assessment?.modelVersion ?? "0.1.0"}</span></div>
+          <div className="risk-scale"><div className="scale-fill" style={{ right: `${100 - (assessment?.evidence ?? .66) * 100}%` }}/><i className="scale-marker" style={{ left: `calc(${(assessment?.evidence ?? .66) * 100}% - 11px)` }}/></div>
           <div className="scale-labels"><span>Recent range</span><span>Unusual</span><span>Persistent</span><span>Possible shift</span></div>
-          <div className="risk-result"><span>Current assessment</span><strong>Persistent anomaly</strong></div>
+          <div className="risk-result"><span>Current assessment</span><strong>{assessment?.regime ?? "Persistent anomaly"}</strong></div>
+          <div className="model-numbers"><span><b>{Math.round((assessment?.evidence ?? .66) * 100)}%</b> evidence index</span><span><b>{Math.round((assessment?.transitionRisk ?? .28) * 100)}%</b> 5-year diagnostic</span><span><b>{Math.round((assessment?.confidence ?? .72) * 100)}%</b> model confidence</span></div>
           <p className="risk-note">Several related signals remain outside their recent range. Evidence is not sufficient to infer a regime transition.</p>
-          {expanded && <div className="method"><b>Evidence, not an alarm.</b> The prototype combines density structure, convection, freshwater pressure, spatial fingerprints, and transport estimates. Direct observations validate the model as new releases become available.</div>}
+          {expanded && <div className="method"><b>Evidence, not an alarm.</b> The prototype combines density structure, convection, freshwater pressure, spatial fingerprints, and transport estimates. Direct observations validate the model as new releases become available. Current feed: <code>{assessment?.datasetMode ?? "illustrative-fixture"}</code>.</div>}
         </div>
       </section>
 
